@@ -1,0 +1,239 @@
+{
+  "algorithm": {
+    "batch_after_first_solution": 200,
+    "initial_batch": 100,
+    "just_in_time_sampling": false,
+    "rewire_factor": 1.1,
+    "sample_attempts": 100
+  },
+  "analysis": {
+    "common_cohort": "SEM_and_all_four_segment_v2_selectors_final_safe",
+    "confirmation_registered": false,
+    "final_selection": "in_budget_before_independent_validation_no_rescue",
+    "full_registered": false,
+    "held_out_evidence": false,
+    "pilot_is_development": true,
+    "primary_backend": "a3t_pri_segment_v2",
+    "primary_baseline": "sem_native",
+    "psr_denominator": "all_durable_physical_attempts_including_failures",
+    "ranking_order": [
+      "maximum_family_delta_PRI",
+      "mean_family_delta_L_H",
+      "alpha"
+    ],
+    "report_metrics": [
+      "final_cost_terrain_m",
+      "final_pri",
+      "final_risk_sum",
+      "final_risk_count",
+      "final_exposure"
+    ],
+    "requires_all_planned_terminal_verdicts": true,
+    "requires_every_development_map": true,
+    "reused_development_map_definitions": true,
+    "secondary_baseline": "a3t_pri_pathsearch_v1",
+    "secondary_comparison": "matched_same_alpha_descriptive_no_additional_gate",
+    "selector_unit": "four_correlated_outputs_per_A3_physical_run",
+    "sem_results_used_as_planner_guidance": false,
+    "smoke_selects_alpha": false,
+    "stop_after_pilot": true,
+    "tuning_gate": "each_family:mean_delta_PRI<0;mean_delta_L_H<0;observed_delta_PSR>=0"
+  },
+  "backends": [
+    "a3t_pri_segment_v2",
+    "a3t_pri_pathsearch_v1",
+    "sem_native"
+  ],
+  "execution": {
+    "fresh_campaign": true,
+    "max_workers": 4,
+    "minimum_free_disk_bytes": 4294967296,
+    "phase_order": [
+      "wave_collection",
+      "wave_independent_validation"
+    ],
+    "pilot_collection_workers": 4,
+    "pilot_phase_order": [
+      "collection_all_registered_slots",
+      "independent_validation_by_map"
+    ],
+    "pilot_validation_map_chunk_size": 4,
+    "pilot_validation_workers": 4,
+    "platform": "Linux",
+    "process_watchdog_s": 600.0,
+    "reserve_bytes_per_collection_worker": 536870912,
+    "reserve_bytes_per_validation_worker": 536870912,
+    "retry_started_trials": false,
+    "reuse_prior_physical_observations": false,
+    "seed_replacements": [],
+    "shuffle_seed": 83177,
+    "start_method": "spawn",
+    "threads_per_trial": 1,
+    "validation_workers": 4,
+    "wave_map_count": 4
+  },
+  "model": {
+    "max_slope_deg": 35.0,
+    "nearest_neighbor_metric": "euclidean_xy",
+    "objective": "surface_length",
+    "robot_radius_m": 0.3,
+    "safety_margin_m": 0.1,
+    "state": "xy"
+  },
+  "native_sem": {
+    "algorithm_budget_policy": "pri_portfolio_v1",
+    "objective": "native_length_turn_risk",
+    "official_implementation": false,
+    "rolling_optimization": false,
+    "weights": [
+      0.48,
+      0.16,
+      0.36
+    ]
+  },
+  "pathsearch": {
+    "anchor_fraction": 0.25,
+    "archive_length_bins": 16,
+    "archive_paths_per_bin": 4,
+    "bitstar_slice_fraction": 0.005,
+    "displacement_resolution_multipliers": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      32,
+      64
+    ],
+    "internal_length_cap_ratio": 1.1,
+    "modes": {
+      "a3t_pri_pathsearch_v1": "full",
+      "a3t_pri_segment_v2": "segment"
+    },
+    "objective": "surface_length",
+    "optimizer_slice_fraction": 0.015,
+    "replacement_windows_m": [
+      0.5,
+      1.0,
+      2.0,
+      4.0,
+      8.0,
+      16.0,
+      "whole"
+    ],
+    "segment_search": {
+      "beam_width": 8,
+      "max_depth": 8,
+      "max_expansions": 128,
+      "max_nodes": 24,
+      "objective": "min_surface_length_subject_to_whole_path_PRI_cap",
+      "operator": "contextual_bounded_beam",
+      "prefix_PRI_pruning": false,
+      "risk_target_ratio": 0.99,
+      "schedule": [
+        "shortcut",
+        "deform",
+        "segment_reduce",
+        "segment_contract"
+      ],
+      "shared_outside_cells": true,
+      "target_cap_indices": [
+        0,
+        1,
+        2,
+        2,
+        3
+      ]
+    },
+    "selection_metric": "exact_unique_closed_cell_PRI",
+    "selector_alphas": [
+      1.0,
+      1.025,
+      1.05,
+      1.1
+    ],
+    "selector_count_is_not_trial_count": true,
+    "selectors_are_correlated_outputs": true,
+    "splice_distance_m": 1.0
+  },
+  "profiles": {
+    "pilot": {
+      "extent_m": 40.0,
+      "families": [
+        "traversable_hill",
+        "ridge_pass",
+        "rolling_terrain",
+        "narrow_passage",
+        "mixed_obstacles"
+      ],
+      "map_seeds": [
+        41001,
+        41002,
+        41003
+      ],
+      "planned_trials": 225,
+      "planner_seeds": [
+        416001,
+        416002,
+        416003,
+        416004,
+        416005
+      ],
+      "planning_budget_s": 20.0,
+      "query_id": "q0",
+      "spacing_m": 0.2
+    },
+    "smoke_parallel": {
+      "extent_m": 20.0,
+      "families": [
+        "flat",
+        "tilted",
+        "unsafe_short_safe_detour",
+        "two_corridors_slope",
+        "two_corridors_clearance",
+        "nodata_thin_obstacle",
+        "flat_40m"
+      ],
+      "map_seeds": [
+        101
+      ],
+      "planned_trials": 21,
+      "planner_seeds": [
+        11
+      ],
+      "planning_budget_s": 2.0,
+      "query_id": "q0",
+      "spacing_m": 0.2
+    },
+    "smoke_serial": {
+      "extent_m": 20.0,
+      "families": [
+        "flat",
+        "tilted",
+        "unsafe_short_safe_detour",
+        "two_corridors_slope",
+        "two_corridors_clearance",
+        "nodata_thin_obstacle",
+        "flat_40m"
+      ],
+      "map_seeds": [
+        101
+      ],
+      "planned_trials": 21,
+      "planner_seeds": [
+        11
+      ],
+      "planning_budget_s": 2.0,
+      "query_id": "q0",
+      "spacing_m": 0.2
+    }
+  },
+  "protocol_id": "a3t_pri_segment_pilot_v2",
+  "safety": {
+    "atlas_sampling": true,
+    "policy_id": "a3t_safe_length_v1",
+    "risk_cap": 40.0,
+    "slope_cap_deg": 35.0
+  },
+  "schema_version": 1
+}

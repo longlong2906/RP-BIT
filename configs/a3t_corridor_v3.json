@@ -1,0 +1,155 @@
+{
+  "algorithm": {
+    "batch_after_first_solution": 200,
+    "initial_batch": 100,
+    "just_in_time_sampling": false,
+    "rewire_factor": 1.1,
+    "sample_attempts": 100
+  },
+  "analysis": {
+    "bootstrap_order": [
+      "family_fixed",
+      "map",
+      "paired_seed"
+    ],
+    "bootstrap_replicates": 2000,
+    "bootstrap_seed": 83158,
+    "confidence": 0.95,
+    "final_selection": "last_published_incumbent_in_budget_before_validation",
+    "selection_order": [
+      "paired_candidate_mean_length",
+      "paired_candidate_mean_pri",
+      "alpha"
+    ]
+  },
+  "corridor_policy": {
+    "alpha": 1.1,
+    "dilation_cells": 1,
+    "label_bins": 16,
+    "max_labels": 2000000,
+    "max_memory_bytes": 536870912
+  },
+  "execution": {
+    "full_requires_explicit_flag": true,
+    "max_workers": 1,
+    "pilot_requires_explicit_flag": true,
+    "process_watchdog_s": 600.0,
+    "retry_started_trials": false,
+    "seed_replacements": [],
+    "threads_per_trial": 1
+  },
+  "guidance": {
+    "approximation": "16_slack_bins_per_node; no_continuous_or_PRI_optimality_claim",
+    "endpoint_radius_m": 0.2,
+    "exposure": "integral_risk_ds_surface",
+    "grid_spacing_m": 0.1,
+    "guide_selection": "whole_path_unique_cell_PRI_then_length_then_node_sequence",
+    "guide_used_as_incumbent": false,
+    "immutable_single_corridor": true,
+    "risk_ceiling": 40.0,
+    "slope_cap_deg": 35.0
+  },
+  "model": {
+    "max_slope_deg": 35.0,
+    "nearest_neighbor_metric": "euclidean_xy",
+    "objective": "surface_length",
+    "robot_radius_m": 0.3,
+    "safety_margin_m": 0.1,
+    "state": "xy"
+  },
+  "profiles": {
+    "full": {
+      "extent_m": 40.0,
+      "families": [
+        "traversable_hill",
+        "ridge_pass",
+        "rolling_terrain",
+        "narrow_passage",
+        "mixed_obstacles"
+      ],
+      "map_seeds": [
+        33001,
+        33002,
+        33003,
+        33004,
+        33005,
+        33006,
+        33007,
+        33008,
+        33009,
+        33010
+      ],
+      "planner_seeds": [
+        336001,
+        336002,
+        336003,
+        336004,
+        336005,
+        336006,
+        336007,
+        336008,
+        336009,
+        336010
+      ],
+      "planning_budget_s": 20.0,
+      "requires_selected_pilot": true,
+      "spacing_m": 0.2
+    },
+    "pilot": {
+      "alphas": [
+        1.05,
+        1.1,
+        1.2
+      ],
+      "extent_m": 40.0,
+      "families": [
+        "traversable_hill",
+        "ridge_pass",
+        "rolling_terrain",
+        "narrow_passage",
+        "mixed_obstacles"
+      ],
+      "map_seeds": [
+        31001,
+        31002
+      ],
+      "planner_seeds": [
+        316001,
+        316002,
+        316003
+      ],
+      "planning_budget_s": 20.0,
+      "spacing_m": 0.2
+    },
+    "smoke": {
+      "alpha": 1.1,
+      "extent_m": 20.0,
+      "families": [
+        "flat",
+        "tilted",
+        "unsafe_short_safe_detour",
+        "two_corridors_slope",
+        "two_corridors_clearance",
+        "nodata_thin_obstacle",
+        "flat_40m"
+      ],
+      "map_seeds": [
+        101
+      ],
+      "planner_seeds": [
+        11
+      ],
+      "planning_budget_s": 2.0,
+      "spacing_m": 0.2
+    }
+  },
+  "protocol_id": "a3t_corridor_v3",
+  "schema_version": 3,
+  "validation": {
+    "common_risk_ceiling_strict": true,
+    "independent_risk_comparison_ulps": 64,
+    "planner_risk_comparison": "exact_leq_cap",
+    "raw_metrics_unchanged": true,
+    "risk_roundoff_scale": "max(1,abs(cap),abs(risk_max))"
+  }
+}

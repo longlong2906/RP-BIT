@@ -1,0 +1,11 @@
+--- a/src/ompl/geometric/planners/rrt/src/RRTstar.cpp
++++ b/src/ompl/geometric/planners/rrt/src/RRTstar.cpp
+@@ -905,7 +905,7 @@
+         for (auto &startMotion : startMotions_)
+         {
+             costToCome = opt_->betterCost(
+-                costToCome, opt_->motionCost(startMotion->state,
++                costToCome, opt_->motionCostHeuristic(startMotion->state,
+                                              motion->state));  // lower-bounding cost from the start to the state
+         }
+     }

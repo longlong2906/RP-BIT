@@ -1,0 +1,11 @@
+--- a/src/ompl/CMakeLists.txt
++++ b/src/ompl/CMakeLists.txt
+@@ -56,7 +56,7 @@
+     set_target_properties(ompl PROPERTIES VERSION "${PROJECT_VERSION}" STATIC_LIBRARY_FLAGS "psapi.lib ws2_32.lib")
+ else (MSVC)
+     if (MINGW)
+-        target_link_libraries(ompl psapi ws2_32)
++        target_link_libraries(ompl PRIVATE psapi ws2_32)
+         set_target_properties(ompl PROPERTIES LINK_FLAGS "-Wl,--export-all-symbols")
+     endif (MINGW)
+     set_target_properties(ompl PROPERTIES VERSION "${PROJECT_VERSION}" SOVERSION "${OMPL_ABI_VERSION}")

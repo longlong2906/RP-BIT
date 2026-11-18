@@ -1,0 +1,47 @@
+--- a/src/ompl/geometric/planners/informedtrees/aitstar/src/ImplicitGraph.cpp
++++ b/src/ompl/geometric/planners/informedtrees/aitstar/src/ImplicitGraph.cpp
+@@ -298,7 +298,7 @@
+                     auto costToGo = objective_->infiniteCost();
+                     for (const auto &goal : goalVertices_)
+                     {
+-                        costToGo = objective_->betterCost(
+-                            costToCome, objective_->motionCostHeuristic(vertex->getState(), goal->getState()));
++                        costToGo = objective_->betterCost(
++                            costToGo, objective_->motionCostHeuristic(vertex->getState(), goal->getState()));
+                     }
+ 
+                     // If this can possibly improve the current solution, it is in the informed set.
+@@ -333,13 +333,14 @@
+                     do
+                     {
+                         // Sample the associated state uniformly within the informed set.
+-                        sampler_->sampleUniform(newSamples_.back()->getState(), solutionCost_);
++                        const bool foundInformedSample =
++                            sampler_->sampleUniform(newSamples_.back()->getState(), solutionCost_);
+ 
+-                        // Count how many states we've checked.
+-                        ++numSampledStates_;
+-
+-                        // Check if the sample is valid.
+-                        foundValidSample = spaceInformation_->getStateValidityChecker()->isValid(newSamples_.back()->getState());
++                        // A false return means the bounded informed sampler did not produce a state.
++                        // Never validate or insert the unchanged state buffer in that case.
++                        if (foundInformedSample)
++                        {
++                            ++numSampledStates_;
++                            foundValidSample = spaceInformation_->getStateValidityChecker()->isValid(newSamples_.back()->getState());
++                        }
+                     } while (!foundValidSample && !terminationCondition);
+ 
+                     // The sample can be invalid if the termination condition is met.
+--- a/src/ompl/geometric/planners/informedtrees/src/AITstar.cpp
++++ b/src/ompl/geometric/planners/informedtrees/src/AITstar.cpp
+@@ -1077,7 +1077,8 @@
+             return {
+                 objective_->combineCosts(objective_->combineCosts(parent->getCostToComeFromStart(), edgeCostHeuristic),
+                                          child->getCostToGoToGoal()),
+-                objective_->combineCosts(edgeCostHeuristic, child->getCostToGoToGoal()),
++                objective_->combineCosts(parent->getCostToComeFromStart(), edgeCostHeuristic),
+                 parent->getCostToComeFromStart()};
+         }
+

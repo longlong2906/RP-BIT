@@ -1,0 +1,105 @@
+{
+  "protocol_id": "a4_rpbitstar_v1",
+  "schema_version": 1,
+  "safety": {"risk_cap": 40.0, "slope_cap_deg": 35.0},
+  "execution": {
+    "cores": [2],
+    "process_watchdog_s": 600.0,
+    "reserve_bytes_per_worker": 419430400,
+    "retry_started_trials": false
+  },
+  "analysis": {
+    "baseline": "sem_native",
+    "checkpoints_s": [0.5, 1.0, 2.0, 5.0, 10.0, 20.0],
+    "sem_equivalent_lambda": 30.0,
+    "noninferiority_margin": 0.01,
+    "bootstrap_replicates": 20000,
+    "bootstrap_seed": 61016
+  },
+  "methods": {
+    "sem_native": {"kind": "sem_native"},
+    "a3t_sem_exposure_l30": {"kind": "sem_exposure", "lambda": 30.0},
+    "a4_rpbit_l30": {"kind": "rp_bit", "lambda": 30.0, "refine": true},
+    "a4_rpbit_l30_norefine": {"kind": "rp_bit", "lambda": 30.0, "refine": false},
+    "a4_rpbit_l30_nopotential": {"kind": "rp_bit", "lambda": 30.0, "refine": true, "potential": false},
+    "a4_rpbit_l30_full20": {"kind": "rp_bit", "lambda": 30.0, "refine": true, "stop_batches": 0},
+    "a4_rpbit_l30_noround": {"kind": "rp_bit", "lambda": 30.0, "refine": true, "round_turns": false},
+    "a4_rpbit_l30_m20": {"kind": "rp_bit", "lambda": 30.0, "refine": true, "stop_batches": 20},
+    "a4_rpbit_l33_m20_norefine": {"kind": "rp_bit", "lambda": 33.0, "refine": false, "stop_batches": 20},
+    "a4_rpbit_l33_m20_nopotential": {"kind": "rp_bit", "lambda": 33.0, "refine": true, "potential": false, "stop_batches": 20},
+    "a4_rpbit_l33": {"kind": "rp_bit", "lambda": 33.0, "refine": true},
+    "a3t_sem_exposure_l33": {"kind": "sem_exposure", "lambda": 33.0},
+    "a4_rpbit_l30_r002": {"kind": "rp_bit", "lambda": 30.0, "refine": true, "round_cost_ratio": 0.002},
+    "a4_rpbit_l30_r010": {"kind": "rp_bit", "lambda": 30.0, "refine": true, "round_cost_ratio": 0.01},
+    "a4_rpbit_l33_m20": {"kind": "rp_bit", "lambda": 33.0, "refine": true, "stop_batches": 20},
+    "a4_rpbit_l36_m20": {"kind": "rp_bit", "lambda": 36.0, "refine": true, "stop_batches": 20},
+    "a4_rpbit_l24": {"kind": "rp_bit", "lambda": 24.0, "refine": true},
+    "a4_rpbit_l27": {"kind": "rp_bit", "lambda": 27.0, "refine": true},
+    "a4_rpbit_l36": {"kind": "rp_bit", "lambda": 36.0, "refine": true},
+    "a4_rpbit_l45": {"kind": "rp_bit", "lambda": 45.0, "refine": true}
+  },
+  "phases": {
+    "smoke": {
+      "maps": "smoke", "map_seeds": [101], "planner_seeds": [11], "planning_budget_s": 2.0,
+      "methods": ["sem_native", "a3t_sem_exposure_l30", "a4_rpbit_l30", "a4_rpbit_l30_norefine"]
+    },
+    "smoke_baseline": {
+      "maps": "smoke", "map_seeds": [101], "planner_seeds": [11], "planning_budget_s": 2.0,
+      "methods": ["sem_native", "a3t_sem_exposure_l30"]
+    },
+    "dev_sem": {
+      "maps": "dev", "map_seeds": [41001, 41002, 41003],
+      "planner_seeds": [416001, 416002, 416003, 416004, 416005], "planning_budget_s": 20.0,
+      "methods": ["sem_native"]
+    },
+    "dev_legacy": {
+      "maps": "dev", "map_seeds": [41001, 41002, 41003],
+      "planner_seeds": [416001], "planning_budget_s": 20.0,
+      "methods": ["a3t_sem_exposure_l30"]
+    },
+    "dev_a4_core": {
+      "maps": "dev", "map_seeds": [41001, 41002, 41003],
+      "planner_seeds": [416001, 416002, 416003, 416004, 416005], "planning_budget_s": 20.0,
+      "methods": ["a4_rpbit_l30", "a4_rpbit_l30_norefine", "a4_rpbit_l30_nopotential", "a4_rpbit_l30_noround"]
+    },
+    "dev_a4_full20": {
+      "maps": "dev", "map_seeds": [41001, 41002, 41003],
+      "planner_seeds": [416001, 416002, 416003, 416004, 416005], "planning_budget_s": 20.0,
+      "methods": ["a4_rpbit_l30_full20"]
+    },
+    "dev_a4_lambda": {
+      "maps": "dev", "map_seeds": [41001, 41002, 41003],
+      "planner_seeds": [416001, 416002, 416003, 416004, 416005], "planning_budget_s": 20.0,
+      "methods": ["a4_rpbit_l24", "a4_rpbit_l27", "a4_rpbit_l36", "a4_rpbit_l45"]
+    },
+    "dev_a4_tune": {
+      "maps": "dev", "map_seeds": [41001, 41002, 41003],
+      "planner_seeds": [416001, 416002, 416003, 416004, 416005], "planning_budget_s": 20.0,
+      "methods": ["a4_rpbit_l30_m20", "a4_rpbit_l30_r002", "a4_rpbit_l30_r010"]
+    },
+    "dev_a4_balance": {
+      "maps": "dev", "map_seeds": [41001, 41002, 41003],
+      "planner_seeds": [416001, 416002, 416003, 416004, 416005], "planning_budget_s": 20.0,
+      "selection_rule": "among lambda 30/33/36 at stop_batches 20: all registered criteria pass, then minimal max(upper95 pooled dAPL%, upper95 pooled dPRI%)",
+      "methods": ["a4_rpbit_l33_m20", "a4_rpbit_l36_m20"]
+    },
+    "rehearsal": {
+      "maps": "generate", "map_seeds": [51001], "planner_seeds": [516001], "planning_budget_s": 2.0,
+      "methods": ["sem_native", "a4_rpbit_l30"]
+    },
+    "heldout": {
+      "maps": "generate",
+      "map_seeds": [61001, 61002, 61003, 61004, 61005, 61006, 61007, 61008, 61009, 61010],
+      "planner_seeds": [616001, 616002, 616003, 616004, 616005], "planning_budget_s": 20.0,
+      "primary_method": "a4_rpbit_l33_m20",
+      "methods": ["sem_native", "a3t_sem_exposure_l33", "a4_rpbit_l33_m20", "a4_rpbit_l33_m20_norefine",
+                  "a4_rpbit_l33_m20_nopotential", "a4_rpbit_l33"]
+    },
+    "smoke_final": {
+      "maps": "smoke", "map_seeds": [101], "planner_seeds": [11], "planning_budget_s": 2.0,
+      "primary_method": "a4_rpbit_l33_m20",
+      "methods": ["sem_native", "a3t_sem_exposure_l33", "a4_rpbit_l33_m20", "a4_rpbit_l33_m20_norefine",
+                  "a4_rpbit_l33_m20_nopotential", "a4_rpbit_l33"]
+    }
+  }
+}

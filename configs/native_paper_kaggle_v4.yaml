@@ -1,0 +1,205 @@
+{
+  "schema_version": 13,
+  "protocol_id": "a3t_old_safe_sem_kaggle_v4",
+  "model": {
+    "state": "xy",
+    "robot_radius_m": 0.3,
+    "safety_margin_m": 0.1,
+    "max_slope_deg": 35.0,
+    "roughness_limit_m": null,
+    "local_connector": "straight_xy_lifted_to_piecewise_affine_heightfield",
+    "goal": "singleton",
+    "goal_roundoff_tolerance_m": 1e-09
+  },
+  "native_objectives": {
+    "a3t_old": "a3t_surface_slope_clearance_v1",
+    "a3t_safe": "surface_length_subject_to_sem40_swept35_v1",
+    "sem_native": "sem_length_turn_risk_paper_v2"
+  },
+  "source_precedence": "paper_then_pinned_author_source",
+  "native_parameters": {
+    "a3t_old": {
+      "planner": "OMPL_BITstar",
+      "objective": "L_H+R",
+      "risk_lambda": 1.0,
+      "slope_weight": 0.5,
+      "clearance_weight": 0.5,
+      "comfort_clearance_m": 0.4
+    },
+    "a3t_safe": {
+      "planner": "OMPL_BITstar",
+      "objective": "surface_length",
+      "risk_cap": 40.0,
+      "slope_cap_deg": 35.0,
+      "atlas_sampling": true,
+      "initial_batch": 100,
+      "batch_after_first_solution": 200,
+      "rewire_factor": 1.1,
+      "sample_attempts": 100,
+      "threshold_policy": "immutable_no_relaxation"
+    },
+    "sem_native": {
+      "weights": [
+        0.48,
+        0.16,
+        0.36
+      ],
+      "turn_threshold_deg": 30.0,
+      "risk_threshold": 40.0,
+      "step_m": 1.0,
+      "neighbor_radius_m": 3.0,
+      "raster_m": 0.1,
+      "gaussian_radius_cells": 5,
+      "gaussian_sigma_cells": 1.6666666666666667,
+      "gaussian_padding": "nearest",
+      "length_units": "grid_cells",
+      "turn_units": "radian",
+      "risk_slope_units": "degree",
+      "directional_sobel": "plane_exact_normalization",
+      "informed_bound": "resolution_times_Cbest_divided_by_0.48",
+      "rolling_optimization": false
+    }
+  },
+  "profiles": {
+    "smoke": {
+      "families": [
+        "flat",
+        "tilted",
+        "unsafe_short_safe_detour",
+        "two_corridors_slope",
+        "two_corridors_clearance",
+        "nodata_thin_obstacle",
+        "flat_40m"
+      ],
+      "map_seeds": [
+        101
+      ],
+      "planner_seeds": [
+        11
+      ],
+      "extent_m": 20.0,
+      "spacing_m": 0.2,
+      "planning_budget_s": 2.0
+    },
+    "main": {
+      "families": [
+        "traversable_hill",
+        "ridge_pass",
+        "rolling_terrain",
+        "narrow_passage",
+        "mixed_obstacles"
+      ],
+      "map_seeds": [
+        28001,
+        28002,
+        28003,
+        28004,
+        28005,
+        28006,
+        28007,
+        28008,
+        28009,
+        28010
+      ],
+      "planner_seeds": [
+        296001,
+        296002,
+        296003,
+        296004,
+        296005,
+        296006,
+        296007,
+        296008,
+        296009,
+        296010
+      ],
+      "extent_m": 40.0,
+      "spacing_m": 0.2,
+      "planning_budget_s": 20.0
+    }
+  },
+  "representation": {
+    "master_cloud_spacing_m": 0.05,
+    "obstacle_height_m": 2.0,
+    "sem_resolution_m": 0.1,
+    "observation_noise": "none"
+  },
+  "execution": {
+    "max_workers": 4,
+    "threads_per_trial": 1,
+    "shuffle_seed": 83137,
+    "setup_timeout_s": 600.0,
+    "solve_grace_s": 5.0,
+    "serialize_timeout_s": 60.0,
+    "session_soft_stop_s": 28800.0,
+    "session_finalize_s": 32400.0,
+    "main_requires_explicit_flag": true,
+    "required_cpu_capacity": 4,
+    "runtime_policy": "native_paper_sessions_v4",
+    "retry_started_trials": false,
+    "compaction": "postsolve_coordinate_dedup_and_byte_identical_native_raster_sharing"
+  },
+  "analysis": {
+    "checkpoints_s": [
+      0.1,
+      0.25,
+      0.5,
+      1.0,
+      2.0,
+      5.0,
+      10.0,
+      15.0,
+      20.0
+    ],
+    "bootstrap_replicates": 2000,
+    "bootstrap_seed": 83138,
+    "confidence": 0.95,
+    "sharp_turn_threshold_deg": 30.0,
+    "shared_sem_evaluator": true,
+    "plot": true,
+    "clearance_metrics": false,
+    "final_selection": "last_published_native_incumbent_in_budget_before_validation",
+    "secondary_selection": "first_published_incumbent_passing_geometry_and_shared_sem",
+    "shared_sem": {
+      "resolution_m": 0.1,
+      "variance": "population",
+      "slope_weights": [
+        0.5,
+        0.5
+      ],
+      "gaussian_radius_cells": 5,
+      "gaussian_sigma_cells": 1.6666666666666667,
+      "maximum_radius_cells": 5,
+      "padding": "nearest",
+      "risk_weights": [
+        200.0,
+        0.75
+      ],
+      "slope_units": "degree",
+      "risk_threshold": 40.0,
+      "cell_policy": "all_closed_cells_touched_by_centerline; unique_cells_per_path"
+    },
+    "reference_backend": "sem_native",
+    "contrasts": [
+      [
+        "a3t_safe",
+        "sem_native"
+      ],
+      [
+        "a3t_old",
+        "sem_native"
+      ],
+      [
+        "a3t_safe",
+        "a3t_old"
+      ]
+    ],
+    "first_solution_metrics": [
+      "first_geometry_s",
+      "first_paper_s",
+      "first_geometry_latency_s",
+      "first_paper_latency_s"
+    ],
+    "restricted_first_safe": true
+  }
+}

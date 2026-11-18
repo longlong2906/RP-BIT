@@ -1,0 +1,11 @@
+{
+  "synthetic_fixture": true,
+  "purpose": "Parser-only status contract; not experimental performance data",
+  "cases": [
+    {"trial":{"execution_status":"COMPLETED","planner_status":"APPROXIMATE_SOLUTION","time_budget_s":2},"validation":{"valid":true},"events":[{"elapsed_s":1,"independent_valid":true}],"expected":false},
+    {"trial":{"execution_status":"WATCHDOG","planner_status":"EXACT_SOLUTION","time_budget_s":2},"validation":{"valid":true},"events":[{"elapsed_s":1,"independent_valid":true}],"expected":false},
+    {"trial":{"execution_status":"COMPLETED","planner_status":"EXACT_SOLUTION","time_budget_s":2},"validation":{"valid":false},"events":[{"elapsed_s":1,"independent_valid":true}],"expected":false},
+    {"trial":{"execution_status":"COMPLETED","planner_status":"EXACT_SOLUTION","time_budget_s":2},"validation":{"valid":true},"events":[{"elapsed_s":3,"independent_valid":true}],"expected":false},
+    {"trial":{"execution_status":"COMPLETED","planner_status":"EXACT_SOLUTION","time_budget_s":2},"validation":{"valid":true},"events":[{"elapsed_s":1,"independent_valid":true}],"expected":true}
+  ]
+}

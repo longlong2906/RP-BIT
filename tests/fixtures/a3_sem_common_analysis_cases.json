@@ -1,0 +1,33 @@
+{
+  "synthetic_test_fixture": true,
+  "purpose": "Parser, checkpoint, censoring, pairing, and status tests only. Invented values are never experimental measurements and must never be copied to results/ or reports/.",
+  "protocol_id": "a3_vs_sem_rrtstar_common_v1",
+  "families": [
+    "traversable_hill",
+    "ridge_pass",
+    "rolling_terrain",
+    "narrow_passage",
+    "mixed_obstacles"
+  ],
+  "map_seeds": [4001, 4002, 4003, 4004, 4005, 4006, 4007, 4008, 4009, 4010],
+  "planner_seeds": [92001, 92002, 92003],
+  "planners": ["bitstar_a3", "sem_rrtstar_common_v1"],
+  "behavior": {
+    "bitstar_a3": {
+      "successful_seed_ranks": [0, 1, 2],
+      "first_solution_s": 1.0,
+      "initial_cost_m": 12.0,
+      "improved_time_s": 7.0,
+      "improved_cost_m": 10.0,
+      "effort_scale": 2
+    },
+    "sem_rrtstar_common_v1": {
+      "successful_seed_ranks": [0, 1],
+      "first_solution_s": 2.0,
+      "initial_cost_m": 11.0,
+      "improved_time_s": 7.0,
+      "improved_cost_m": 9.0,
+      "effort_scale": 1
+    }
+  }
+}

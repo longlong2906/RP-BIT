@@ -1,0 +1,103 @@
+{
+  "schema_version": 10,
+  "protocol_id": "a3_terrain_compare_kaggle_v1",
+  "model": {
+    "state": "xy",
+    "robot_radius_m": 0.3,
+    "safety_margin_m": 0.1,
+    "max_slope_deg": 35.0,
+    "roughness_limit_m": null,
+    "local_connector": "straight_xy_lifted_to_piecewise_affine_heightfield",
+    "goal": "singleton",
+    "goal_roundoff_tolerance_m": 1e-09
+  },
+  "traversability": {
+    "feature_version": "cell_envelope_v1",
+    "lambda": 1.0,
+    "slope_weight": 0.5,
+    "clearance_weight": 0.5,
+    "clearance_comfort_m": 0.4
+  },
+  "profiles": {
+    "smoke": {
+      "families": [
+        "flat",
+        "tilted",
+        "unsafe_short_safe_detour",
+        "two_corridors_slope",
+        "two_corridors_clearance",
+        "nodata_thin_obstacle"
+      ],
+      "map_seeds": [
+        101
+      ],
+      "planner_seeds": [
+        11
+      ],
+      "extent_m": 20.0,
+      "spacing_m": 0.2,
+      "planning_budget_s": 2.0
+    },
+    "main": {
+      "families": [
+        "traversable_hill",
+        "ridge_pass",
+        "rolling_terrain",
+        "narrow_passage",
+        "mixed_obstacles",
+        "two_corridors_traversability"
+      ],
+      "map_seeds": [
+        7001,
+        7002,
+        7003,
+        7004,
+        7005
+      ],
+      "planner_seeds": [
+        95001,
+        95002,
+        95003
+      ],
+      "extent_m": 40.0,
+      "spacing_m": 0.2,
+      "planning_budget_s": 10.0
+    }
+  },
+  "execution": {
+    "max_workers": 4,
+    "threads_per_trial": 1,
+    "shuffle_seed": 73135,
+    "memory_limit_bytes": 8589934592,
+    "admission_fraction": 0.8,
+    "pressure_fraction": 0.9,
+    "pressure_duration_s": 5.0,
+    "setup_timeout_s": 180.0,
+    "solve_grace_s": 5.0,
+    "serialize_timeout_s": 60.0,
+    "session_soft_stop_s": 28800.0,
+    "session_finalize_s": 32400.0
+  },
+  "representation": {
+    "ground_spacing_m": 0.2,
+    "synthetic_obstacle_height_m": 2.0,
+    "putn_voxel_m": 0.1,
+    "sgp_grid_m": 0.2,
+    "noise": "none"
+  },
+  "analysis": {
+    "checkpoints_s": [
+      0.1,
+      0.25,
+      0.5,
+      1.0,
+      2.0,
+      5.0,
+      10.0
+    ],
+    "bootstrap_replicates": 2000,
+    "bootstrap_seed": 73136,
+    "confidence": 0.95,
+    "risk_is_probability": false
+  }
+}

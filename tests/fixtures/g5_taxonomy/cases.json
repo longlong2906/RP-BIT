@@ -1,0 +1,17 @@
+{
+  "synthetic_test_fixture": true,
+  "purpose": "G5-v2 analyzer taxonomy regression only; never performance evidence",
+  "budget_s": 1.0,
+  "cases": {
+    "exact": {"execution_status": "COMPLETED", "planner_status": "EXACT_SOLUTION", "start": [1.0, 5.0], "goal": [9.0, 5.0], "endpoint": [9.0, 5.0], "event_time_s": 0.4},
+    "approximate": {"execution_status": "TIMEOUT", "planner_status": "APPROXIMATE_SOLUTION", "start": [1.0, 5.0], "goal": [9.0, 5.0], "endpoint": [4.0, 5.0]},
+    "invalid_approximate": {"execution_status": "TIMEOUT", "planner_status": "APPROXIMATE_SOLUTION", "start": [1.0, 5.0], "goal": [9.0, 5.0], "endpoint": [6.0, 5.0], "rectangles": [[4.9, 0.0, 5.1, 10.0]]},
+    "timeout": {"execution_status": "TIMEOUT", "planner_status": "NO_SOLUTION", "start": [1.0, 5.0], "goal": [9.0, 5.0]},
+    "timeout_exact_incumbent": {"execution_status": "TIMEOUT", "planner_status": "EXACT_SOLUTION", "start": [1.0, 5.0], "goal": [9.0, 5.0], "endpoint": [9.0, 5.0], "event_time_s": 0.4},
+    "administrative_interruption": {"execution_status": "CRASH", "planner_status": "NO_SOLUTION", "start": [1.0, 5.0], "goal": [9.0, 5.0], "administrative_interruption": true},
+    "identity": {"execution_status": "COMPLETED", "planner_status": "EXACT_SOLUTION", "start": [5.0, 5.0], "goal": [5.0, 5.0], "endpoint": [5.0, 5.0], "event_time_s": 0.0, "event_origin": "analytic_identity_query"},
+    "near_goal": {"execution_status": "COMPLETED", "planner_status": "EXACT_SOLUTION", "start": [5.0, 5.0], "goal": [5.0000000001, 5.0], "endpoint": [5.0000000001, 5.0], "event_time_s": 0.01},
+    "wrong_exact_endpoint": {"execution_status": "COMPLETED", "planner_status": "EXACT_SOLUTION", "start": [1.0, 5.0], "goal": [9.0, 5.0], "endpoint": [4.0, 5.0], "event_time_s": 0.4},
+    "late_exact_incumbent": {"execution_status": "COMPLETED", "planner_status": "EXACT_SOLUTION", "start": [1.0, 5.0], "goal": [9.0, 5.0], "endpoint": [9.0, 5.0], "event_time_s": 1.1}
+  }
+}

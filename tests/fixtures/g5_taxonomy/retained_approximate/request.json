@@ -1,0 +1,18 @@
+{
+  "map_path": "D:\\BIT_2.5D\\build-g5\\correctness_trials\\run_ijoqlf28\\rrtstar_timeout\\map.t25d",
+  "planner_id": "rrtstar",
+  "planner_seed": 771,
+  "start": [
+    1.0,
+    5.0
+  ],
+  "goal": [
+    9.0,
+    5.0
+  ],
+  "planning_budget_s": 0.02,
+  "samples_per_batch": 40,
+  "rewire_factor": 1.1,
+  "sample_attempts": 100,
+  "progress_interval_s": 0.05
+}

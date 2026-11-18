@@ -1,0 +1,23 @@
+{
+  "protocol_id": "a3t_safe_length_smoke_v1",
+  "schema_version": 1,
+  "profile": "smoke",
+  "families": ["flat", "tilted", "unsafe_short_safe_detour", "two_corridors_slope", "two_corridors_clearance", "nodata_thin_obstacle", "flat_40m"],
+  "map_seed": 101,
+  "planner_seeds": [11],
+  "planning_budget_s": 2.0,
+  "spacing_m": 0.2,
+  "risk_cap": 40.0,
+  "slope_cap_deg": 35.0,
+  "methods": ["constrained_fixed200", "atlas_fixed200", "atlas_adaptive100_200", "sem_common_safe_length", "sem_native"],
+  "threads_per_trial": 1,
+  "max_workers": 1,
+  "process_watchdog_s": 180.0,
+  "seed_replacements": [],
+  "tuning_prepare_only": {
+    "risk_caps": [2.0, 4.0, 8.0, 16.0, 40.0],
+    "slope_caps_deg": [5.0, 10.0, 20.0, 35.0],
+    "execution_status": "NOT_RUN",
+    "requires_new_registered_pilot_protocol": true
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "algorithm": {
+    "batch_after_first_solution": 200,
+    "initial_batch": 100,
+    "just_in_time_sampling": false,
+    "rewire_factor": 1.1,
+    "sample_attempts": 100
+  },
+  "analysis": {
+    "comparisons": [
+      "sem_native",
+      "a3t_corridor_v4",
+      "a3t_sem_exposure_l0"
+    ],
+    "final_selection": "last_published_incumbent_in_budget_before_validation",
+    "full_status": "NOT_RUN",
+    "nominal_method": "a3t_sem_exposure_l1",
+    "pilot_status": "NOT_RUN",
+    "smoke_selects_weight": false
+  },
+  "execution": {
+    "max_workers": 4,
+    "phase_order": [
+      "collection",
+      "independent_validation"
+    ],
+    "process_watchdog_s": 600.0,
+    "reserve_bytes_per_collection_worker": 1073741824,
+    "reserve_bytes_per_validation_worker": 536870912,
+    "retry_started_trials": false,
+    "seed_replacements": [],
+    "start_method": "spawn",
+    "threads_per_trial": 1,
+    "validation_workers": 4
+  },
+  "methods": [
+    "a3t_sem_exposure_l0",
+    "a3t_sem_exposure_l1",
+    "a3t_sem_exposure_l4",
+    "a3t_sem_exposure_l16",
+    "a3t_corridor_v4",
+    "sem_native"
+  ],
+  "model": {
+    "max_slope_deg": 35.0,
+    "nearest_neighbor_metric": "euclidean_xy",
+    "objective": "surface_length_sem_exposure",
+    "robot_radius_m": 0.3,
+    "safety_margin_m": 0.1,
+    "state": "xy"
+  },
+  "profiles": {
+    "smoke": {
+      "extent_m": 20.0,
+      "families": [
+        "flat",
+        "tilted",
+        "unsafe_short_safe_detour",
+        "two_corridors_slope",
+        "two_corridors_clearance",
+        "nodata_thin_obstacle",
+        "flat_40m"
+      ],
+      "map_seeds": [
+        101
+      ],
+      "planner_seeds": [
+        11
+      ],
+      "planning_budget_s": 2.0,
+      "spacing_m": 0.2
+    }
+  },
+  "protocol_id": "a3t_sem_exposure_v1",
+  "safety": {
+    "atlas_sampling": true,
+    "corridor": false,
+    "policy_id": "a3t_safe_length_v1",
+    "risk_cap": 40.0,
+    "slope_cap_deg": 35.0
+  },
+  "schema_version": 1,
+  "sem_exposure": {
+    "exposure_is_pri": false,
+    "formula": "J = L_H + lambda * integral(F_R ds_H) / 40",
+    "lambdas": [
+      0.0,
+      1.0,
+      4.0,
+      16.0
+    ],
+    "nominal_lambda": 1.0,
+    "risk_scale": 40.0
+  }
+}

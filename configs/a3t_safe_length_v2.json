@@ -1,0 +1,149 @@
+{
+  "algorithm": {
+    "batch_after_first_solution": 200,
+    "initial_batch": 100,
+    "just_in_time_sampling": false,
+    "rewire_factor": 1.1,
+    "sample_attempts": 100
+  },
+  "analysis": {
+    "bootstrap_order": [
+      "family_fixed",
+      "map",
+      "paired_seed"
+    ],
+    "bootstrap_replicates": 2000,
+    "bootstrap_seed": 83148,
+    "confidence": 0.95,
+    "final_selection": "last_published_incumbent_in_budget_before_validation",
+    "selection_order": [
+      "paired_candidate_mean_length",
+      "paired_candidate_mean_pri",
+      "risk_slack"
+    ]
+  },
+  "calibration": {
+    "endpoint_radius_m": 0.2,
+    "endpoint_radius_tie_scale": "max(1,abs(endpoint_xy),abs(grid_node_xy),radius)",
+    "endpoint_radius_tie_ulps": 16,
+    "grid_spacing_m": 0.1,
+    "policy": "immutable_query_minimax_plus_slack",
+    "risk_ceiling": 40.0,
+    "slope_cap_deg": 35.0,
+    "witness_used_as_incumbent": false
+  },
+  "execution": {
+    "full_requires_explicit_flag": true,
+    "max_workers": 1,
+    "pilot_requires_explicit_flag": true,
+    "process_watchdog_s": 600.0,
+    "retry_started_trials": false,
+    "seed_replacements": [],
+    "threads_per_trial": 1
+  },
+  "model": {
+    "max_slope_deg": 35.0,
+    "nearest_neighbor_metric": "euclidean_xy",
+    "objective": "surface_length",
+    "robot_radius_m": 0.3,
+    "safety_margin_m": 0.1,
+    "state": "xy"
+  },
+  "profiles": {
+    "full": {
+      "extent_m": 40.0,
+      "families": [
+        "traversable_hill",
+        "ridge_pass",
+        "rolling_terrain",
+        "narrow_passage",
+        "mixed_obstacles"
+      ],
+      "map_seeds": [
+        32001,
+        32002,
+        32003,
+        32004,
+        32005,
+        32006,
+        32007,
+        32008,
+        32009,
+        32010
+      ],
+      "planner_seeds": [
+        326001,
+        326002,
+        326003,
+        326004,
+        326005,
+        326006,
+        326007,
+        326008,
+        326009,
+        326010
+      ],
+      "planning_budget_s": 20.0,
+      "requires_selected_pilot": true,
+      "spacing_m": 0.2
+    },
+    "pilot": {
+      "extent_m": 40.0,
+      "families": [
+        "traversable_hill",
+        "ridge_pass",
+        "rolling_terrain",
+        "narrow_passage",
+        "mixed_obstacles"
+      ],
+      "map_seeds": [
+        31001,
+        31002
+      ],
+      "planner_seeds": [
+        316001,
+        316002,
+        316003
+      ],
+      "planning_budget_s": 20.0,
+      "risk_slacks": [
+        0.0,
+        0.5,
+        1.0,
+        2.0,
+        4.0
+      ],
+      "spacing_m": 0.2
+    },
+    "smoke": {
+      "extent_m": 20.0,
+      "families": [
+        "flat",
+        "tilted",
+        "unsafe_short_safe_detour",
+        "two_corridors_slope",
+        "two_corridors_clearance",
+        "nodata_thin_obstacle",
+        "flat_40m"
+      ],
+      "map_seeds": [
+        101
+      ],
+      "planner_seeds": [
+        11
+      ],
+      "planning_budget_s": 2.0,
+      "risk_slack": 0.5,
+      "spacing_m": 0.2
+    }
+  },
+  "protocol_id": "a3t_safe_length_v2",
+  "schema_version": 2,
+  "validation": {
+    "common_risk_ceiling_strict": true,
+    "independent_risk_comparison_ulps": 64,
+    "planner_risk_comparison": "exact_leq_cap",
+    "raw_metrics_unchanged": true,
+    "risk_roundoff_scale": "max(1,abs(cap),abs(risk_max))"
+  }
+}

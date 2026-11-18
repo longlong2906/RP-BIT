@@ -1,0 +1,110 @@
+{
+  "record": "a4_rpbit_fairtime_registration_v1",
+  "protocol_id": "a4_rpbitstar_v1",
+  "created_utc": "2026-11-16T19:38:25.555380+00:00",
+  "purpose": "Registered before any trial of this experiment. The Kaggle controller refuses a config whose hashes differ and writes heldout_deviation_record.json with the Linux identity before the first held-out trial.",
+  "user_decision_2026_11_17": "The user approved a new experiment: the locked primary A4 against the C++ SEM-RRT* port, both with 20 s, on Kaggle.",
+  "question": "With both planners in C++ on the same hardware and the same 20 s wall-clock budget, does the locked primary A4 still meet every criterion of plan section 5.3 against SEM-RRT*?",
+  "relation_to_previous": {
+    "heldout_kaggle": "Spent (2026-11-16, kernel notebook66864104b1): Python SEM-RRT* with a fixed 7425 iterations; the primary passed every criterion. Never rerun, never pooled with this experiment.",
+    "sem_cpp_port": "include/terrain25d/SemRrtStar.hpp, src/SemRrtStar.cpp (library sem_rrtstar_c): bit-identical to the Python reconstruction on 30/30 dev runs at 7425 iterations on Windows (logs/sem_cpp_20261117/dev_equivalence/summary.json), about 48x faster."
+  },
+  "config": "configs/a4_rpbitstar_v1_fairtime_kaggle.json",
+  "config_sha256": "413a509cf6a0472ac0527bedf85f52435063dc7301663a660f380be7ec2a958f",
+  "phase_config_sha256": {
+    "smoke_fairtime": "30cbcbab4f5ef4d7edbd0f8e96d9bdf87f3885e25ebebded4c2a3d17777e5444",
+    "gate_fairtime": "29982b436f31ee0b676cd6729c022b6112738b2425f6faa5ff210be4d38d129d",
+    "heldout_fairtime": "30b996759c8aaa2aea889e7d3ff27a6bd450998606ef1a446b67fc3babb59ca5"
+  },
+  "gates": [
+    "smoke_fairtime",
+    "gate_fairtime"
+  ],
+  "heldout_phase": "heldout_fairtime",
+  "planned_trials": {
+    "smoke_fairtime": 14,
+    "gate_fairtime": 10,
+    "heldout_fairtime": 500
+  },
+  "methods": {
+    "sem_native": "SEM-RRT* project reconstruction, C++ search engine (Python/scipy native raster as preprocessing), 20 s wall clock, no iteration limit.",
+    "a4_rpbit_l33_m20": "Locked primary (lambda 33, M = 20 convergence batches, refinement on), unchanged since the lock of 2026-11-16T03:46:05.7959372Z; 20 s cap, self-stop on convergence."
+  },
+  "inputs": {
+    "families": [
+      "traversable_hill",
+      "ridge_pass",
+      "rolling_terrain",
+      "narrow_passage",
+      "mixed_obstacles"
+    ],
+    "map_seeds": [
+      71001,
+      71002,
+      71003,
+      71004,
+      71005,
+      71006,
+      71007,
+      71008,
+      71009,
+      71010
+    ],
+    "planner_seeds": [
+      716001,
+      716002,
+      716003,
+      716004,
+      716005
+    ],
+    "pairs": 250,
+    "novelty": "map seeds 71001-71010 and planner seeds 716001-716005 appear in no earlier config, tool, test or document"
+  },
+  "timing_protocol": [
+    "Kaggle CPU session (no accelerator). execution.cores [0]: one lane, one trial at a time, so the two methods never run concurrently; the controller still requires every registered core on its own physical core.",
+    "One fresh process per trial, pinned to its lane core, one thread.",
+    "Both methods of a (map, planner seed) block run back to back on the same core; the method order alternates between blocks.",
+    "Solve clocks as registered in plan 5.3: A4 from before potential construction; SEM from planner construction, after loading the map and building the native raster and its C++ copy (reported separately as preprocessing)."
+  ],
+  "gates_before_heldout": [
+    "Linux build of the delivered sources; 31 CTest groups: the 30 of the previous Kaggle run plus sem_native_cpp (exact == comparisons of RNG, CPython math, libm, model edges and full solves).",
+    "smoke_fairtime: 7 smoke fixtures, 2 s, both methods; no correctness error, every A4 trial successful, strict validation.",
+    "gate_fairtime: the 5 families at map seed 51001, planner seed 516001, 20 s, both methods; same conditions.",
+    "sem_cpp_bit_identity: on the 5 gate_fairtime maps, planner seeds 516001 and 516002, Python and C++ SEM-RRT* each run 7425 iterations and must be identical in status, counters and every incumbent (10/10), on the Linux runtime of the campaign.",
+    "Any failed gate stops the run before the held-out; the cause is reported, nothing is retuned."
+  ],
+  "primary_criteria": {
+    "source": "plan section 5.3, unchanged; evaluated by tools/analyze_rp_bit.py criteria() for a4_rpbit_l33_m20 against sem_native",
+    "items": [
+      "PSR: A4 >= SEM, pooled and in every family.",
+      "STI: pooled A4 < SEM.",
+      "Time: A4 solve time to self-stop < SEM (20 s).",
+      "J30 = L_H + 30 E / 40 by the independent oracle: paired mean difference < 0 and its one-sided upper 95% bound < 0 (hierarchical bootstrap map -> seed, 20000 replicates, seed 61016).",
+      "APL and PRI: pooled relative difference upper 95% bound < +1% (non-inferiority); target: pooled mean difference < 0."
+    ]
+  },
+  "secondary_descriptive": [
+    "Anytime table at T in {0.5, 1, 2, 5, 10, 20} s: paired differences with the same bootstrap upper bound (equal-time comparison).",
+    "A4 time to reach the final SEM-RRT* J30 of the same slot (tolerance 0 and 1%).",
+    "SEM-RRT* iterations per run (engine speed on the Kaggle CPU).",
+    "Per-family tables and the failed attempts."
+  ],
+  "stated_expectation": "At 20 s the C++ SEM-RRT* does several times the 7425 iterations of the previous held-out (on dev, Windows: 44,800-60,600 iterations and 0.42-3.0% lower native cost). The J30 margin of A4 on heldout_kaggle (-0.954 of about 154.6, about 0.6%) may shrink, vanish or reverse; STI and Time are expected to stay in favour of A4. Every outcome is reported.",
+  "rules": [
+    "Started trials are never retried; no seeds are added; criteria and analysis are not changed after any held-out result is seen.",
+    "Strict per-snapshot validation of the primary method; fast independent validation of every trial.",
+    "Results are reported as measured on Kaggle Linux; their Time is not compared with Windows numbers."
+  ],
+  "limitations": [
+    "Bit identity is checked up to 7425 iterations; at 20 s the C++ engine runs further on the same code.",
+    "Shared cloud VM: background load can add timing noise; both methods of a block share the core and alternate order.",
+    "SEM-RRT* is the project reconstruction, not the authors code."
+  ],
+  "revision": 2,
+  "supersedes": {
+    "path": "logs/a4_rpbit_fairtime_20261117/registration_r1_superseded.json",
+    "sha256": "5f46a05ad2c960647ac60a94a4823267de01b8bec3d23d8925c57cd47c981cd4",
+    "created_utc": "2026-11-16T19:30:35.743899+00:00",
+    "reason": "r1 registered execution.cores [0, 1]; the shared lane runner (corridor_v4_execution.run_spawn_lanes) accepts only one or four lanes, found by a local Windows rehearsal of the non-held-out gates before any trial of this experiment started. r2 runs one lane on CPU 0; nothing else changes."
+  }
+}

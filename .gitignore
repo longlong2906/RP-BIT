@@ -1,0 +1,69 @@
+# Allowlist: ignore everything at the top level, then re-include only what A4 needs to build, test and run.
+# Data, results, logs, build trees and dependency archives stay local (see README).
+/*
+!/.gitignore
+!/.gitattributes
+!/LICENSE
+!/README.md
+!/AGENTS.md
+!/CMakeLists.txt
+!/requirements-*.txt
+!/apps/
+!/cmake/
+!/configs/
+!/include/
+!/src/
+!/tools/
+!/tests/
+!/patches/
+!/kaggle_a4_rpbit/
+
+# docs: only the A4 description and the research spec it builds on
+!/docs/
+/docs/*
+!/docs/A4_RP_BITSTAR.md
+!/docs/EXPERIMENT_SPEC.md
+!/docs/IMPLEMENTATION_PLAN.md
+
+# logs: only the locked config and the registrations that the A4 code reads
+!/logs/
+/logs/*
+!/logs/a4_rpbit_20261116/
+/logs/a4_rpbit_20261116/*
+!/logs/a4_rpbit_20261116/lock_manifest.json
+!/logs/a4_rpbit_fairtime_20261117/
+/logs/a4_rpbit_fairtime_20261117/*
+!/logs/a4_rpbit_fairtime_20261117/registration.json
+!/logs/a4_rpbit_selfstop_20261117/
+/logs/a4_rpbit_selfstop_20261117/*
+!/logs/a4_rpbit_selfstop_20261117/registration.json
+!/logs/sem_cpp_20261117/
+/logs/sem_cpp_20261117/*
+!/logs/sem_cpp_20261117/dev_equivalence/
+/logs/sem_cpp_20261117/dev_equivalence/*
+!/logs/sem_cpp_20261117/dev_equivalence/summary.json
+
+# shared Kaggle helpers imported by kaggle_a4_rpbit
+!/kaggle_pri_pathsearch/
+/kaggle_pri_pathsearch/*
+!/kaggle_pri_pathsearch/bootstrap.py
+!/kaggle_pri_segment/
+/kaggle_pri_segment/*
+!/kaggle_pri_segment/__init__.py
+!/kaggle_pri_segment/transport.py
+
+# test fixtures used by the A4 CTest set; the rest belong to closed lines
+/tests/fixtures/*
+!/tests/fixtures/a3_sem_common_analysis_cases.json
+!/tests/fixtures/analysis_cases.json
+!/tests/fixtures/bitstar_counter_logs.json
+!/tests/fixtures/cloud_analysis_cases.json
+!/tests/fixtures/g5_taxonomy/
+!/tests/fixtures/native_paper/
+!/tests/fixtures/native_paper_v4_endpoint_roundoff/
+!/tests/fixtures/safe_length_v2_analysis_cases.json
+!/tests/fixtures/status_cases.json
+!/tests/fixtures/terrain_compare_fake_worker.py
+
+__pycache__/
+*.pyc

@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "ompl_base_commit": "eabb4d0f825666e4553a2ec0ecb9c7a5a33637dd",
+  "ompl_commit_evidence": "PAX comment in official GitHub release source tarball",
+  "archives": {
+    "ompl-1.7.0": {"url":"https://codeload.github.com/ompl/ompl/tar.gz/refs/tags/1.7.0","sha256":"e2e2700dfb0b4c2d86e216736754dd1b316bd6a46cc8818e1ffcbce4a388aca9"},
+    "eigen-3.4.0": {"url":"https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz","sha256":"8586084f71f9bde545ee7fa6d00288b264a2b7ac3607b974e54d13e7162c1c72"},
+    "boost_1_82_0": {"url":"https://archives.boost.io/release/1.82.0/source/boost_1_82_0.tar.gz","sha256":"66a469b6e608a51f8347236f4912e27dc5c60c60d7d53ae9bfe4683316c6f04c"}
+  }
+}

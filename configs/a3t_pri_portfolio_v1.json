@@ -1,0 +1,218 @@
+{
+  "algorithm": {
+    "batch_after_first_solution": 200,
+    "initial_batch": 100,
+    "just_in_time_sampling": false,
+    "rewire_factor": 1.1,
+    "sample_attempts": 100
+  },
+  "analysis": {
+    "bootstrap_order": [
+      "family_fixed",
+      "map",
+      "paired_seed"
+    ],
+    "bootstrap_replicates": 100000,
+    "bootstrap_seed": 83178,
+    "confidence": 0.995,
+    "confirmation_quality_gate": "each_family:upper99.5_delta_PRI<0;upper99.5_delta_L_H<=0",
+    "familywise_error_rate": 0.05,
+    "final_selection": "registered_portfolio_selection_completed_in_budget_before_oracle",
+    "no_confirmation_runner_up": true,
+    "psr_gate": "observed_no_decrease_not_population_noninferiority",
+    "quality_comparisons": 10,
+    "ranking_order": [
+      "maximum_family_delta_PRI",
+      "mean_family_delta_L_H",
+      "alpha"
+    ],
+    "smoke_selects_alpha": false,
+    "tuning_common_cohort": "SEM_and_all_four_alphas_final_safe",
+    "tuning_gate": "each_family:mean_delta_PRI<0;mean_delta_L_H<=0;observed_delta_PSR>=0",
+    "tuning_requires_every_map": true
+  },
+  "execution": {
+    "max_workers": 4,
+    "minimum_free_disk_bytes": 4294967296,
+    "phase_order": [
+      "wave_collection",
+      "wave_independent_validation"
+    ],
+    "process_watchdog_s": 600.0,
+    "reserve_bytes_per_collection_worker": 536870912,
+    "reserve_bytes_per_validation_worker": 536870912,
+    "retry_started_trials": false,
+    "seed_replacements": [],
+    "shuffle_seed": 83177,
+    "start_method": "spawn",
+    "threads_per_trial": 1,
+    "validation_workers": 4,
+    "wave_map_count": 4
+  },
+  "model": {
+    "max_slope_deg": 35.0,
+    "nearest_neighbor_metric": "euclidean_xy",
+    "objective": "surface_length",
+    "robot_radius_m": 0.3,
+    "safety_margin_m": 0.1,
+    "state": "xy"
+  },
+  "native_sem": {
+    "algorithm_budget_policy": "pri_portfolio_v1",
+    "objective": "native_length_turn_risk",
+    "official_implementation": false,
+    "rolling_optimization": false,
+    "weights": [
+      0.48,
+      0.16,
+      0.36
+    ]
+  },
+  "portfolio": {
+    "cap_used_for_candidate_admission_only": true,
+    "component_connectivity": 8,
+    "component_rank": "descending_anchor_risk_surplus_then_minimum_cell_id",
+    "dilation_cells": 0,
+    "episode_budget_fractions": [
+      0.25,
+      0.25,
+      0.25,
+      0.25
+    ],
+    "length_cap_ratios": [
+      1.0,
+      1.025,
+      1.05,
+      1.1
+    ],
+    "mask_quantiles": [
+      0.9,
+      0.75
+    ],
+    "no_external_incumbent": true,
+    "selection_order": [
+      "PRI",
+      "L_H",
+      "episode_id",
+      "callback_id"
+    ]
+  },
+  "profiles": {
+    "confirm": {
+      "extent_m": 40.0,
+      "families": [
+        "traversable_hill",
+        "ridge_pass",
+        "rolling_terrain",
+        "narrow_passage",
+        "mixed_obstacles"
+      ],
+      "map_seeds": [
+        42001,
+        42002,
+        42003,
+        42004,
+        42005,
+        42006,
+        42007,
+        42008,
+        42009,
+        42010
+      ],
+      "planned_trials": 1000,
+      "planner_seeds": [
+        426001,
+        426002,
+        426003,
+        426004,
+        426005,
+        426006,
+        426007,
+        426008,
+        426009,
+        426010
+      ],
+      "planning_budget_s": 20.0,
+      "query_id": "q0",
+      "spacing_m": 0.2
+    },
+    "pilot": {
+      "extent_m": 40.0,
+      "families": [
+        "traversable_hill",
+        "ridge_pass",
+        "rolling_terrain",
+        "narrow_passage",
+        "mixed_obstacles"
+      ],
+      "map_seeds": [
+        41001,
+        41002,
+        41003
+      ],
+      "planned_trials": 375,
+      "planner_seeds": [
+        416001,
+        416002,
+        416003,
+        416004,
+        416005
+      ],
+      "planning_budget_s": 20.0,
+      "query_id": "q0",
+      "spacing_m": 0.2
+    },
+    "smoke_parallel": {
+      "extent_m": 20.0,
+      "families": [
+        "flat",
+        "tilted",
+        "unsafe_short_safe_detour",
+        "two_corridors_slope",
+        "two_corridors_clearance",
+        "nodata_thin_obstacle",
+        "flat_40m"
+      ],
+      "map_seeds": [
+        101
+      ],
+      "planned_trials": 35,
+      "planner_seeds": [
+        11
+      ],
+      "planning_budget_s": 2.0,
+      "query_id": "q0",
+      "spacing_m": 0.2
+    },
+    "smoke_serial": {
+      "extent_m": 20.0,
+      "families": [
+        "flat",
+        "tilted",
+        "unsafe_short_safe_detour",
+        "two_corridors_slope",
+        "two_corridors_clearance",
+        "nodata_thin_obstacle",
+        "flat_40m"
+      ],
+      "map_seeds": [
+        101
+      ],
+      "planned_trials": 35,
+      "planner_seeds": [
+        11
+      ],
+      "planning_budget_s": 2.0,
+      "query_id": "q0",
+      "spacing_m": 0.2
+    }
+  },
+  "protocol_id": "a3t_pri_portfolio_v1",
+  "safety": {
+    "atlas_sampling": true,
+    "policy_id": "a3t_safe_length_v1",
+    "risk_cap": 40.0,
+    "slope_cap_deg": 35.0
+  },
+  "schema_version": 1
+}

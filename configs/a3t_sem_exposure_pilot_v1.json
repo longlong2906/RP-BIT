@@ -1,0 +1,159 @@
+{
+  "algorithm": {
+    "batch_after_first_solution": 200,
+    "initial_batch": 100,
+    "just_in_time_sampling": false,
+    "rewire_factor": 1.1,
+    "sample_attempts": 100
+  },
+  "analysis": {
+    "bootstrap_order": [
+      "family_fixed",
+      "map",
+      "paired_seed"
+    ],
+    "bootstrap_replicates": 2000,
+    "bootstrap_seed": 83158,
+    "confidence": 0.95,
+    "confirmation_gate": "mean_gates_and_upper_CI_delta_L_H<0_and_upper_CI_delta_PRI<0_and_lower_CI_delta_PSR>=0",
+    "final_selection": "last_published_incumbent_in_budget_before_validation",
+    "full_status": "NOT_RUN",
+    "no_confirmation_runner_up": true,
+    "ranking_cohort": "SEM_and_all_eligible_positive_lambdas_success_at_same_map_query_seed",
+    "ranking_order": [
+      "common_cohort_mean_surface_length",
+      "common_cohort_mean_PRI",
+      "lambda"
+    ],
+    "ranking_requires_every_family": true,
+    "tuning_gate": "PSR>=SEM; paired_mean_delta_L_H<0; paired_mean_delta_PRI<0"
+  },
+  "execution": {
+    "map_order": "map_seed_then_family",
+    "max_workers": 4,
+    "phase_order": [
+      "collection",
+      "independent_validation"
+    ],
+    "process_watchdog_s": 600.0,
+    "reserve_bytes_per_collection_worker": 1073741824,
+    "reserve_bytes_per_validation_worker": 536870912,
+    "retry_started_trials": false,
+    "seed_replacements": [],
+    "start_method": "spawn",
+    "threads_per_trial": 1,
+    "trial_order": "planner_seed_then_rotated_methods_by_block_index",
+    "validation_workers": 4,
+    "wave_map_count": 4
+  },
+  "model": {
+    "max_slope_deg": 35.0,
+    "nearest_neighbor_metric": "euclidean_xy",
+    "objective": "surface_length_sem_exposure",
+    "robot_radius_m": 0.3,
+    "safety_margin_m": 0.1,
+    "state": "xy"
+  },
+  "profiles": {
+    "confirm": {
+      "extent_m": 40.0,
+      "families": [
+        "traversable_hill",
+        "ridge_pass",
+        "rolling_terrain",
+        "narrow_passage",
+        "mixed_obstacles"
+      ],
+      "map_seeds": [
+        38001,
+        38002,
+        38003,
+        38004
+      ],
+      "planned_trials": 600,
+      "planner_seeds": [
+        386001,
+        386002,
+        386003,
+        386004,
+        386005,
+        386006,
+        386007,
+        386008,
+        386009,
+        386010
+      ],
+      "planning_budget_s": 20.0,
+      "query_id": "q0",
+      "spacing_m": 0.2
+    },
+    "tune": {
+      "extent_m": 40.0,
+      "families": [
+        "traversable_hill",
+        "ridge_pass",
+        "rolling_terrain",
+        "narrow_passage",
+        "mixed_obstacles"
+      ],
+      "map_seeds": [
+        37001,
+        37002,
+        37003,
+        37004,
+        37005,
+        37006,
+        37007,
+        37008,
+        37009,
+        37010
+      ],
+      "planned_trials": 2500,
+      "planner_seeds": [
+        376001,
+        376002,
+        376003,
+        376004,
+        376005
+      ],
+      "planning_budget_s": 20.0,
+      "query_id": "q0",
+      "spacing_m": 0.2
+    }
+  },
+  "protocol_id": "a3t_sem_exposure_pilot_v1",
+  "safety": {
+    "atlas_sampling": true,
+    "corridor": false,
+    "policy_id": "a3t_safe_length_v1",
+    "risk_cap": 40.0,
+    "slope_cap_deg": 35.0
+  },
+  "schema_version": 1,
+  "sem_exposure": {
+    "exposure_is_pri": false,
+    "formula": "J = L_H + lambda * integral(F_R ds_H) / 40",
+    "lambdas": [
+      0.0,
+      0.5,
+      1.0,
+      2.0,
+      4.0,
+      8.0,
+      16.0,
+      32.0,
+      64.0
+    ],
+    "positive_candidates": [
+      0.5,
+      1.0,
+      2.0,
+      4.0,
+      8.0,
+      16.0,
+      32.0,
+      64.0
+    ],
+    "risk_scale": 40.0
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "backend": "a3t_safe",
+  "batch_after_first_solution": 200,
+  "bridge_library": "/kaggle/working/native_paper_v4/repo/build-native-paper-v4/libterrain_compare_c.so",
+  "campaign_schema_version": 13,
+  "clearance_metrics": false,
+  "cloud_path": "/kaggle/working/native_paper_v4/campaign/data/main/mixed_obstacles_28002.cloud.npy",
+  "cloud_phase_handshake": true,
+  "cloud_sha256": "57e0f7420b417f20b7c5cdd05c08a951df5e1543962832649b6ccb19cd922ec1",
+  "collision_index": true,
+  "exact_flat_certificate": false,
+  "goal": [
+    36.00397027371756,
+    19.128785755065106
+  ],
+  "map_path": "/kaggle/working/native_paper_v4/campaign/data/main/mixed_obstacles_28002.t25d",
+  "map_sha256": "278be22f3b0bfba7f9bfd2da6e94fe44f435950dc8dd6412ca9016a66ea3bca2",
+  "native_objective_id": "surface_length_subject_to_sem40_swept35_v1",
+  "objective_type": "surface_length",
+  "planner_id": "bitstar_a3",
+  "planner_seed": 296001,
+  "planning_budget_s": 20.0,
+  "progress_interval_s": 0.05,
+  "protocol_id": "a3t_old_safe_sem_kaggle_v4",
+  "representation_config": {
+    "master_cloud_spacing_m": 0.05,
+    "observation_noise": "none",
+    "obstacle_height_m": 2.0,
+    "sem_resolution_m": 0.1
+  },
+  "rewire_factor": 1.1,
+  "safe_length": {
+    "atlas_sampling": true,
+    "builder_source_sha256": "5ed8e084e463f56ed536c5b2da053ea4b48d9ffabb80ee0af5e3dc6e0a71d965",
+    "cloud_sha256": "57e0f7420b417f20b7c5cdd05c08a951df5e1543962832649b6ccb19cd922ec1",
+    "field_path": "/kaggle/working/native_paper_v4/campaign/data/main/mixed_obstacles_28002.safe_sem.txt",
+    "field_sha256": "84a5742188497fc5ec494099cf50c07871cc1fdc5dbbb778a20c71d2f38fdef1",
+    "policy_id": "a3t_safe_length_v1",
+    "risk_cap": 40.0,
+    "slope_cap_deg": 35.0
+  },
+  "safety_field_builder_key": "a7dafa0f9aa03782a26cd80896222d42becc736099e6fef6baae57cec117faf2",
+  "sample_attempts": 100,
+  "sampler_query_cache": true,
+  "samples_per_batch": 100,
+  "scalar_cost": true,
+  "shared_field_metadata_sha256": "27b4116c6ca98d92c10cf730b67bbcbd671140fb253c34048c3a17518fe32e38",
+  "shared_field_path": "/kaggle/working/native_paper_v4/campaign/data/main/mixed_obstacles_28002.safe_sem.txt",
+  "start": [
+    4.123383465069929,
+    19.128785755065106
+  ],
+  "state_cache": true,
+  "track": "native",
+  "variant_id": "a3t_safe_kaggle_v4",
+  "work_iterations": 0,
+  "worker_binary": "/kaggle/working/native_paper_v4/repo/build-native-paper-v4/terrain_benchmark"
+}

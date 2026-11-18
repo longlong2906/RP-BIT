@@ -1,0 +1,6 @@
+{
+  "fixture_label": "SYNTHETIC parser-only data; never experimental observations",
+  "success": "Info: BITstar_A0 (20 iters): Found a solution of cost 10.0000 (4 vertices) from 40 samples by processing 20 edges (10 collision checked) to create 9 vertices and perform 2 rewirings.\nInfo: BITstar_A0: Finished with a solution of cost 9.0000 (5 vertices) found from 80 samples by processing 30 edges (20 collision checked) to create 19 vertices and perform 7 rewirings. The final graph has 15 vertices.",
+  "failure": "Info: BITstar_A0 (20 iters): Did not find an exact solution from 40 samples after processing 25 edges (10 collision checked) to create 9 vertices and perform 0 rewirings. The final graph has 8 vertices.",
+  "interrupted": "Info: BITstar_A0 (20 iters): Found a solution of cost 10.0000 (4 vertices) from 40 samples by processing 20 edges (10 collision checked) to create 9 vertices and perform 2 rewirings."
+}

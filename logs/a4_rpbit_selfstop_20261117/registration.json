@@ -1,0 +1,169 @@
+{
+ "record": "a4_rpbit_selfstop_registration_v1",
+ "protocol_id": "a4_rpbitstar_v1",
+ "created_utc": "2026-11-17T04:43:13.885802+00:00",
+ "purpose": "Registered before any trial of the held-out phase of this experiment. The Kaggle controller refuses a config whose hashes differ and writes heldout_deviation_record.json with the Linux identity before the first held-out trial.",
+ "user_decision_2026_11_17": "After the fairtime result the user asked that SEM-RRT* stop on convergence for a fair Time comparison with A4. In a question dialog the user chose: (1) the rule that mirrors A4 exactly, nothing tuned on data; (2) a local preview on the seen dev maps first, then a new registered Kaggle experiment with fresh seeds.",
+ "question": "With both planners in C++ on the same hardware and each stopping on its own convergence by the same rule (published objective not lower by at least 0.1% relative over 4,000 samples), under a 20 s cap, does the locked primary A4 still meet every criterion of plan section 5.3 against SEM-RRT*?",
+ "relation_to_previous": {
+  "heldout_kaggle": "Spent (2026-11-16): Python SEM-RRT* with a fixed 7425 iterations; never rerun, never pooled.",
+  "heldout_fairtime": "Spent (2026-11-17, kernel notebook148efabeb1): C++ SEM-RRT* with the full 20 s and no stop rule; the primary passed every criterion. SEM-RRT* always used the whole budget, so its Time was the budget, not a convergence time. Never rerun, never pooled with this experiment.",
+  "dev_preview": {
+   "phase": "dev_selfstop (seen dev maps 41001-41003 x planner seeds 416001-416005, local Windows, one lane on core 2)",
+   "config": "configs/a4_rpbitstar_v1_selfstop_dev.json",
+   "config_sha256": "2d8f1e9ac3a9154376811a10b15f18aa4112ffc0ab3fba701f1b8d1c8c99c6bb",
+   "results": "results/a4_rpbit_selfstop_dev_20261117/dev_selfstop",
+   "report": "reports/a4_rpbit_selfstop_dev_20261117/REPORT.md",
+   "report_json_sha256": "9c1792b12055b33d8922a4030ed42948ddbfc590d9c70f26bf97229386ea9af3",
+   "seen_before_registration": true,
+   "outcome": {
+    "trials": 150,
+    "correctness_failures": 0,
+    "sem_terminations": {
+     "CONVERGED_NO_IMPROVEMENT": 75
+    },
+    "a4_terminations": {
+     "CONVERGED_NO_IMPROVEMENT": 75
+    },
+    "sem_time_s": {
+     "median": 2.082059900000786,
+     "mean": 2.830638615999948,
+     "max": 10.094267899999977
+    },
+    "a4_time_s": {
+     "median": 1.5342093,
+     "mean": 1.519400256,
+     "max": 3.5820021
+    },
+    "paired_time": {
+     "mean_difference_s": -1.3112383599999482,
+     "wins": 51,
+     "losses": 24
+    },
+    "paired_j30": {
+     "mean_difference": -1.0186114150775363,
+     "wins": 75,
+     "losses": 0
+    },
+    "criteria": {
+     "apl_noninferior": true,
+     "apl_target_lower": true,
+     "j_sem_mean_lower": true,
+     "j_sem_upper95_below_zero": true,
+     "method": "a4_rpbit_l33_m20",
+     "pri_noninferior": true,
+     "pri_target_lower": true,
+     "psr_every_family": true,
+     "psr_pooled": true,
+     "sti_lower": true,
+     "time_lower": true
+    }
+   },
+   "nothing_tuned": "The rule was fixed by the user decision before the preview; the preview changed no parameter."
+  }
+ },
+ "config": "configs/a4_rpbitstar_v1_selfstop_kaggle.json",
+ "config_sha256": "1a9a840b7db5bb797bce13c183c26e9566bea0fca275c42e07a5a0014bffe35c",
+ "phase_config_sha256": {
+  "smoke_selfstop": "7df123dcf38be32ff592d33fd1a4c0755ced102b33cafae47987a15fdc040a18",
+  "gate_selfstop": "977e06fed50481edb07cc74be7e8a33d037abaaaa4132ee47b974e476ed9824a",
+  "heldout_selfstop": "2c0b458927b04adcde96e6ba2258889adcf64d618a0b7ce334e0dfc9c0b24f37"
+ },
+ "gates": [
+  "smoke_selfstop",
+  "gate_selfstop"
+ ],
+ "heldout_phase": "heldout_selfstop",
+ "planned_trials": {
+  "smoke_selfstop": 14,
+  "gate_selfstop": 10,
+  "heldout_selfstop": 500
+ },
+ "methods": {
+  "sem_native": "SEM-RRT* project reconstruction, C++ search engine (Python/scipy native raster as preprocessing), stops on convergence by the rule below, 20 s wall-clock cap, no iteration limit.",
+  "a4_rpbit_l33_m20": "Locked primary (lambda 33, M = 20 convergence batches, refinement on), unchanged since the lock of 2026-11-16T03:46:05.7959372Z; 20 s cap, self-stop on convergence."
+ },
+ "sem_convergence_stop": {
+  "rule": {
+   "relative_eps": 0.001,
+   "window_iterations": 4000
+  },
+  "definition": "At every iteration boundary after the first solution: if the published native cost is below reference x (1 - relative_eps), it becomes the reference; otherwise, once window_iterations iterations have passed since the last reset, the search stops (termination CONVERGED_NO_IMPROVEMENT).",
+  "mirrors_a4": "A4 applies the same test at batch boundaries with relative_eps 1e-3 and M = 20 batches; after the first solution a batch holds 200 samples, so its window is 4,000 samples. One SEM-RRT* iteration draws one sample.",
+  "implementation": "SemRrtStar::setConvergenceStop (include/terrain25d/SemRrtStar.hpp, src/SemRrtStar.cpp), C ABI sem_set_convergence_stop / sem_convergence, tools/sem_native_cpp.py, request field sem_convergence_stop (tools/native_paper_worker.py, tools/rp_bit_protocol.py). Off by default: every earlier run is unchanged.",
+  "exact_prefix": "The stop reads only the published cost (no random draw, no tree change), so a stopped search equals the same search without the stop cut at the same iteration. CTest group sem_native_cpp (test_convergence_stop_is_an_exact_prefix) checks this with == against both the C++ and the Python search.",
+  "validation": "tools/rp_bit_validation.py: a SEM trial whose rule differs from the config is a correctness error (sem_convergence_stop_mismatch); a converged trial must have stopped exactly window_iterations after its last reference with a final cost in [reference x (1 - eps), reference] (else sem_convergence_inconsistent)."
+ },
+ "inputs": {
+  "families": [
+   "traversable_hill",
+   "ridge_pass",
+   "rolling_terrain",
+   "narrow_passage",
+   "mixed_obstacles"
+  ],
+  "map_seeds": [
+   81001,
+   81002,
+   81003,
+   81004,
+   81005,
+   81006,
+   81007,
+   81008,
+   81009,
+   81010
+  ],
+  "planner_seeds": [
+   816001,
+   816002,
+   816003,
+   816004,
+   816005
+  ],
+  "pairs": 250,
+  "novelty": "map seeds 81001-81010 and planner seeds 816001-816005 appear in no earlier config, tool, test, document or result directory (searched 2026-11-17)"
+ },
+ "timing_protocol": [
+  "Kaggle CPU session (no accelerator). execution.cores [0]: one lane, one trial at a time, so the two methods never run concurrently.",
+  "One fresh process per trial, pinned to its lane core, one thread.",
+  "Both methods of a (map, planner seed) block run back to back on the same core; the method order alternates between blocks.",
+  "Solve clocks as in plan 5.3: A4 from before potential construction; SEM from planner construction, after loading the map and building the native raster and its C++ copy (reported separately as preprocessing). Time is each method's own stop."
+ ],
+ "gates_before_heldout": [
+  "Linux build of the delivered sources; 31 CTest groups (as fairtime), sem_native_cpp now also checks the exact-prefix property of the stop.",
+  "smoke_selfstop: 7 smoke fixtures, 2 s, both methods; no correctness error, every A4 trial successful, strict validation.",
+  "gate_selfstop: the 5 families at map seed 51001, planner seed 516001, 20 s cap, both methods; same conditions.",
+  "sem_cpp_bit_identity: on the 5 gate_selfstop maps, planner seeds 516001 and 516002, Python and C++ SEM-RRT* (stop off) each run 7425 iterations and must be identical in status, counters and every incumbent (10/10), on the Linux runtime of the campaign.",
+  "Any failed gate stops the run before the held-out; the cause is reported, nothing is retuned."
+ ],
+ "primary_criteria": {
+  "source": "plan section 5.3, unchanged; evaluated by tools/analyze_rp_bit.py criteria() for a4_rpbit_l33_m20 against sem_native",
+  "items": [
+   "PSR: A4 >= SEM, pooled and in every family.",
+   "STI: pooled A4 < SEM.",
+   "Time: paired mean of (A4 solve time to its stop - SEM solve time to its stop) < 0.",
+   "J30 = L_H + 30 E / 40 by the independent oracle: paired mean difference < 0 and its one-sided upper 95% bound < 0 (hierarchical bootstrap map -> seed, 20000 replicates, seed 61016).",
+   "APL and PRI: pooled relative difference upper 95% bound < +1% (non-inferiority); target: pooled mean difference < 0."
+  ]
+ },
+ "secondary_descriptive": [
+  "Termination reasons and stop times of both methods.",
+  "Anytime table at T in {0.5, 1, 2, 5, 10, 20} s (a stopped run keeps its last path).",
+  "A4 time to reach the final SEM-RRT* J30 of the same slot (tolerance 0 and 1%).",
+  "SEM-RRT* iterations per run; per-family tables and the failed attempts."
+ ],
+ "stated_expectation": "On dev (local Windows) SEM-RRT* stopped on convergence in 75/75 runs (median 2.08 s, mean 2.83 s, max 10.1 s), A4 in 75/75 (mean 1.52 s); every criterion passed, but Time is the narrowest: A4 was faster in 51/75 pairs (mean -1.31 s). On Kaggle A4 slowed about 2.4x relative to Windows in the earlier runs while SEM-RRT* slowed about 1.4x, so the Time margin may shrink or reverse; J30 and STI are expected to stay in favour of A4. Every outcome is reported.",
+ "rules": [
+  "Started trials are never retried; no seeds are added; criteria and analysis are not changed after any held-out result is seen.",
+  "Strict per-snapshot validation of the primary method; fast independent validation of every trial (including the stop rule).",
+  "Results are reported as measured on Kaggle Linux; their Time is not compared with Windows numbers."
+ ],
+ "limitations": [
+  "Bit identity with the Python search is checked up to 7425 iterations; the stop is checked as an exact prefix of the C++ search.",
+  "Shared cloud VM: background load can add timing noise; both methods of a block share the core and alternate order.",
+  "The window is matched in samples, not in time or work: one BIT* sample and one SEM-RRT* iteration cost different amounts.",
+  "SEM-RRT* is the project reconstruction, not the authors code; the paper's own termination (5000 iterations) is not used."
+ ],
+ "revision": 1
+}

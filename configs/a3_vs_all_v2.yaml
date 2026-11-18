@@ -1,0 +1,198 @@
+# Preregistered 1500-trial Cloud design; no experimental result is implied.
+schema_version: 5
+project: bitstar_25d
+language: vi
+model:
+  state: xy
+  local_connector: straight_xy_lifted_to_piecewise_affine_heightfield
+  objective: surface_length
+  surface_interpolation: fixed_diagonal_triangles
+  cell_diagonal: southwest_to_northeast
+  height_units: m
+  coordinate_units: m
+  nodata_policy: forbidden
+  obstacle_contact_policy: forbidden
+  include_outside_map_as_forbidden: true
+  robot_radius_m: 0.3
+  safety_margin_m: 0.1
+  max_slope_deg: 35.0
+  roughness_limit_m: null
+  roughness_window_m: 1.0
+  goal: singleton
+  goal_roundoff_tolerance_m: 1.0e-09
+  numerical_abs_tolerance_m: 1.0e-08
+  numerical_rel_tolerance: 1.0e-08
+algorithm:
+  nearest_neighbor_metric: euclidean_xy
+  bitstar_connection: k_nearest
+  bitstar_samples_per_batch: 200
+  bitstar_rewire_factor: 1.1
+  bitstar_just_in_time_sampling: false
+  informed_sample_attempts_per_call: 100
+  informed_measure_policy: audit_and_use_documented_conservative_fallback
+  edge_cache: false
+  graph_pruning_requested: true
+  fail_if_requested_variant_not_effective: true
+  simplification: false
+  approximate_solution_counts_as_success: false
+execution:
+  jobs: 1
+  one_process_per_trial: true
+  seed_before_creating_planner: true
+  shuffle_trial_order_seed: 73138
+  save_trial_manifest: true
+  resume_by_config_hash: true
+  watchdog_grace_s: 5.0
+  memory_limit_mb: 4096
+  default_profile: combined
+  full_requires_explicit_flag: true
+  timing_origin: immediately_before_solve
+  record_preprocessing_separately: true
+  record_setup_separately: true
+  offline_validation_separately: true
+logging:
+  progress_interval_s: 0.05
+  save_improvement_events: true
+  save_improvement_paths: true
+  save_ompl_benchmark_log: true
+  save_path_xy: true
+  save_path_surface_breakpoints: true
+  save_full_tree: false
+  keep_failures: true
+  strict_json_no_nan_or_infinity: true
+analysis:
+  target_relative_tolerances:
+  - 0.1
+  - 0.05
+  - 0.02
+  require_reference_provenance: true
+  confidence_level: 0.95
+  bootstrap_unit_order:
+  - family
+  - map
+  - seed
+  ignore_unexecuted_trials_in_success_denominator: true
+  separately_report_unexecuted_trials: true
+  include_executed_timeouts_in_success_denominator: true
+profiles:
+  combined:
+    map_extent_m:
+    - 40.0
+    - 40.0
+    grid_spacing_m: 0.1
+    families:
+    - traversable_hill
+    - ridge_pass
+    - rolling_terrain
+    - narrow_passage
+    - mixed_obstacles
+    maps_per_family: 20
+    queries_per_map: 1
+    map_seeds:
+    - 6001
+    - 6002
+    - 6003
+    - 6004
+    - 6005
+    - 6006
+    - 6007
+    - 6008
+    - 6009
+    - 6010
+    - 6011
+    - 6012
+    - 6013
+    - 6014
+    - 6015
+    - 6016
+    - 6017
+    - 6018
+    - 6019
+    - 6020
+    planner_seeds:
+    - 94001
+    - 94002
+    - 94003
+    planners:
+    - bitstar_a3
+    - abitstar
+    - aitstar
+    - lazyprmstar_hauser2015
+    - sem_rrtstar_common_v1
+    planning_budget_s: 30.0
+    purpose: held_out_a3_vs_all_common_objective
+optional_ablations:
+  enabled: false
+  require_independent_policy_tests: true
+  planners:
+  - bitstar_a1
+  - bitstar_a2
+optional_extensions:
+  real_maps: false
+  cgal_reference: false
+  aitstar: false
+  abitstar: false
+  physics_simulation: false
+  constrained_3d_comparison: false
+combined_benchmark:
+  protocol_id: a3_vs_all_v2
+  planner_ids:
+  - bitstar_a3
+  - abitstar
+  - aitstar
+  - lazyprmstar_hauser2015
+  - sem_rrtstar_common_v1
+  primary_planner_id: bitstar_a3
+  comparator_planner_ids:
+  - abitstar
+  - aitstar
+  - lazyprmstar_hauser2015
+  - sem_rrtstar_common_v1
+  informed_planner_ids:
+  - bitstar_a3
+  - abitstar
+  - aitstar
+  - sem_rrtstar_common_v1
+  required_query_ids:
+  - q0
+  order_policy: latin_square_shards_five_planners_v2
+  expected_trials: 1500
+  planner_block_size: 5
+  required_allow_flag: --allow-combined-benchmark
+  seed_replacement_policy: forbidden_predeclared_held_out_seeds
+  timer_scope: resumable_phase_worklist_no_campaign_deadline
+  collection_soft_stop_s: null
+  validation_checkpoint_s: null
+  hard_finalize_s: null
+  bootstrap_replicates: 2000
+  bootstrap_seed: 73139
+  sem_range_m: 1.0
+  sem_neighbor_radius_m: 3.0
+  search_direction: backward_goal_to_start
+  lower_bound_policy: d_xy
+  informed_domain_policy: E_xy
+  rolling_optimization: false
+  terrain_risk_cost: false
+  turning_angle_cost: false
+  official_sem_rrtstar_implementation: false
+  sem_comparator_label: SEM-RRT*-adapted common-objective
+  report_metrics:
+  - validated_success
+  - first_solution_time_s
+  - cost_terrain_m_at_budget
+  - length_xy_m_final
+  - actual_solve_wall_s
+  - worker_wall_s
+  - validation_wall_s
+  - peak_rss_mb
+  - motion_validity_calls
+  - state_validity_calls
+  - full_surface_cost_calls
+  - triangle_visits
+  - height_queries
+  - sample_proposals
+  - coverage
+  shard_count: 20
+  max_cloud_tasks: 4
+  setup_watchdog_s: 60.0
+  serialization_watchdog_s: 60.0

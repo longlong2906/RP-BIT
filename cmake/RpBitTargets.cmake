@@ -1,0 +1,16 @@
+if(TERRAIN_WITH_OMPL)
+  target_sources(terrain_ompl PRIVATE src/RpBit.cpp)
+  add_executable(rp_bit_tests tests/integration/rp_bit_tests.cpp)
+  target_link_libraries(rp_bit_tests PRIVATE terrain_ompl)
+  add_test(NAME rp_bit_core COMMAND rp_bit_tests)
+  set_tests_properties(rp_bit_core PROPERTIES LABELS rp_bit TIMEOUT 300)
+  if(WIN32)
+    set_tests_properties(rp_bit_core PROPERTIES ENVIRONMENT_MODIFICATION
+      "PATH=path_list_prepend:${CMAKE_SOURCE_DIR}/.deps/install/lib;PATH=path_list_prepend:C:/mingw64/bin")
+  endif()
+  add_test(NAME rp_bit_worker COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_SOURCE_DIR}/tests/test_rp_bit_worker.py --worker $<TARGET_FILE:terrain_benchmark>)
+  set_tests_properties(rp_bit_worker PROPERTIES LABELS rp_bit RUN_SERIAL TRUE TIMEOUT 600)
+endif()
+add_test(NAME rp_bit_tooling COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_rp_bit_tooling.py)
+set_tests_properties(rp_bit_tooling PROPERTIES LABELS rp_bit RUN_SERIAL TRUE TIMEOUT 300)

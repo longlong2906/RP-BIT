@@ -1,0 +1,196 @@
+{
+  "algorithm": {
+    "batch_after_first_solution": 200,
+    "initial_batch": 100,
+    "just_in_time_sampling": false,
+    "rewire_factor": 1.1,
+    "sample_attempts": 100
+  },
+  "analysis": {
+    "confirmation_registered": false,
+    "final_selection": "in_budget_before_independent_validation_no_rescue",
+    "pilot_is_development": true,
+    "psr_gate": "observed_no_decrease_not_population_noninferiority",
+    "ranking_order": [
+      "maximum_family_delta_PRI",
+      "mean_family_delta_L_H",
+      "alpha"
+    ],
+    "selector_unit": "same_physical_backend_attempt; paired_not_independent",
+    "smoke_selects_alpha": false,
+    "stop_after_pilot": true,
+    "tuning_common_cohort": "SEM_and_all_four_full_selectors_final_safe",
+    "tuning_gate": "each_family:mean_delta_PRI<0;mean_delta_L_H<0;observed_delta_PSR>=0",
+    "tuning_requires_every_map": true
+  },
+  "backends": [
+    "a3t_bitstar_length",
+    "a3t_pri_portfolio_a1100",
+    "a3t_pri_pathsearch_shortcut",
+    "a3t_pri_pathsearch_v1",
+    "sem_native"
+  ],
+  "execution": {
+    "max_workers": 4,
+    "minimum_free_disk_bytes": 4294967296,
+    "phase_order": [
+      "wave_collection",
+      "wave_independent_validation"
+    ],
+    "process_watchdog_s": 600.0,
+    "reserve_bytes_per_collection_worker": 536870912,
+    "reserve_bytes_per_validation_worker": 536870912,
+    "retry_started_trials": false,
+    "seed_replacements": [],
+    "shuffle_seed": 83177,
+    "start_method": "spawn",
+    "threads_per_trial": 1,
+    "validation_workers": 4,
+    "wave_map_count": 4
+  },
+  "legacy_portfolio": {
+    "implementation": "unchanged_pri_portfolio_v1",
+    "length_cap_ratio": 1.1
+  },
+  "model": {
+    "max_slope_deg": 35.0,
+    "nearest_neighbor_metric": "euclidean_xy",
+    "objective": "surface_length",
+    "robot_radius_m": 0.3,
+    "safety_margin_m": 0.1,
+    "state": "xy"
+  },
+  "native_sem": {
+    "algorithm_budget_policy": "pri_portfolio_v1",
+    "objective": "native_length_turn_risk",
+    "official_implementation": false,
+    "rolling_optimization": false,
+    "weights": [
+      0.48,
+      0.16,
+      0.36
+    ]
+  },
+  "pathsearch": {
+    "anchor_fraction": 0.25,
+    "archive_length_bins": 16,
+    "archive_paths_per_bin": 4,
+    "bitstar_slice_fraction": 0.005,
+    "displacement_resolution_multipliers": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      32,
+      64
+    ],
+    "internal_length_cap_ratio": 1.1,
+    "modes": {
+      "a3t_bitstar_length": "length",
+      "a3t_pri_pathsearch_shortcut": "shortcut",
+      "a3t_pri_pathsearch_v1": "full"
+    },
+    "objective": "surface_length",
+    "optimizer_slice_fraction": 0.015,
+    "replacement_windows_m": [
+      0.5,
+      1.0,
+      2.0,
+      4.0,
+      8.0,
+      16.0,
+      "whole"
+    ],
+    "selection_metric": "exact_unique_closed_cell_PRI",
+    "selector_alphas": [
+      1.0,
+      1.025,
+      1.05,
+      1.1
+    ],
+    "selector_count_is_not_trial_count": true,
+    "selectors_are_correlated_outputs": true,
+    "splice_distance_m": 1.0
+  },
+  "profiles": {
+    "pilot": {
+      "extent_m": 40.0,
+      "families": [
+        "traversable_hill",
+        "ridge_pass",
+        "rolling_terrain",
+        "narrow_passage",
+        "mixed_obstacles"
+      ],
+      "map_seeds": [
+        41001,
+        41002,
+        41003
+      ],
+      "planned_trials": 375,
+      "planner_seeds": [
+        416001,
+        416002,
+        416003,
+        416004,
+        416005
+      ],
+      "planning_budget_s": 20.0,
+      "query_id": "q0",
+      "spacing_m": 0.2
+    },
+    "smoke_parallel": {
+      "extent_m": 20.0,
+      "families": [
+        "flat",
+        "tilted",
+        "unsafe_short_safe_detour",
+        "two_corridors_slope",
+        "two_corridors_clearance",
+        "nodata_thin_obstacle",
+        "flat_40m"
+      ],
+      "map_seeds": [
+        101
+      ],
+      "planned_trials": 35,
+      "planner_seeds": [
+        11
+      ],
+      "planning_budget_s": 2.0,
+      "query_id": "q0",
+      "spacing_m": 0.2
+    },
+    "smoke_serial": {
+      "extent_m": 20.0,
+      "families": [
+        "flat",
+        "tilted",
+        "unsafe_short_safe_detour",
+        "two_corridors_slope",
+        "two_corridors_clearance",
+        "nodata_thin_obstacle",
+        "flat_40m"
+      ],
+      "map_seeds": [
+        101
+      ],
+      "planned_trials": 35,
+      "planner_seeds": [
+        11
+      ],
+      "planning_budget_s": 2.0,
+      "query_id": "q0",
+      "spacing_m": 0.2
+    }
+  },
+  "protocol_id": "a3t_pri_pathsearch_v1",
+  "safety": {
+    "atlas_sampling": true,
+    "policy_id": "a3t_safe_length_v1",
+    "risk_cap": 40.0,
+    "slope_cap_deg": 35.0
+  },
+  "schema_version": 1
+}

@@ -1,0 +1,129 @@
+# Opt-in correctness smoke; original bitstar_a3 remains unchanged.
+# No pilot/full profile: this file does not authorize tuning or ranking.
+schema_version: 6
+project: bitstar_25d
+language: vi
+model:
+  state: xy
+  local_connector: straight_xy_lifted_to_piecewise_affine_heightfield
+  objective: surface_length
+  surface_interpolation: fixed_diagonal_triangles
+  cell_diagonal: southwest_to_northeast
+  height_units: m
+  coordinate_units: m
+  nodata_policy: forbidden
+  obstacle_contact_policy: forbidden
+  include_outside_map_as_forbidden: true
+  robot_radius_m: 0.30
+  safety_margin_m: 0.10
+  max_slope_deg: 35.0
+  roughness_limit_m: null
+  roughness_window_m: 1.0
+  goal: singleton
+  goal_roundoff_tolerance_m: 1.0e-9
+  numerical_abs_tolerance_m: 1.0e-8
+  numerical_rel_tolerance: 1.0e-8
+algorithm:
+  nearest_neighbor_metric: euclidean_xy
+  bitstar_connection: k_nearest
+  bitstar_samples_per_batch: 200
+  bitstar_rewire_factor: 1.1
+  bitstar_just_in_time_sampling: false
+  informed_sample_attempts_per_call: 100
+  informed_measure_policy: audit_and_use_documented_conservative_fallback
+  edge_cache: false
+  graph_pruning_requested: true
+  fail_if_requested_variant_not_effective: true
+  simplification: false
+  approximate_solution_counts_as_success: false
+execution:
+  jobs: 1
+  one_process_per_trial: true
+  seed_before_creating_planner: true
+  shuffle_trial_order_seed: 73129
+  save_trial_manifest: true
+  resume_by_config_hash: true
+  watchdog_grace_s: 5.0
+  memory_limit_mb: 4096
+  default_profile: smoke
+  full_requires_explicit_flag: true
+  timing_origin: immediately_before_solve
+  record_preprocessing_separately: true
+  record_setup_separately: true
+  offline_validation_separately: true
+logging:
+  progress_interval_s: 0.05
+  save_improvement_events: true
+  save_improvement_paths: true
+  save_ompl_benchmark_log: true
+  save_path_xy: true
+  save_path_surface_breakpoints: true
+  save_full_tree: false
+  keep_failures: true
+  strict_json_no_nan_or_infinity: true
+analysis:
+  target_relative_tolerances: [0.10, 0.05, 0.02]
+  require_reference_provenance: true
+  confidence_level: 0.95
+  bootstrap_unit_order: [map, query, seed]
+  ignore_unexecuted_trials_in_success_denominator: true
+  separately_report_unexecuted_trials: true
+  include_executed_timeouts_in_success_denominator: true
+profiles:
+  smoke:
+    map_extent_m: [20.0, 20.0]
+    grid_spacing_m: 0.2
+    families: [flat, tilted_plane, traversable_hill, narrow_passage]
+    maps_per_family: 1
+    queries_per_map: 1
+    map_seeds: [101]
+    planner_seeds: [11]
+    planners: [bitstar_a3, a3_cache, a3_scalar, a3_bvh, a3_optimized, a3_batch50, a3_batch100, a3_batch400, a3_two_phase50to200, a3_optimized_two_phase50to200]
+    planning_budget_s: 2.0
+    purpose: implementation_correctness_not_parameter_tuning_or_scientific_ranking
+planner_variants:
+  a3_cache:
+    planner_id: bitstar_a3
+    state_cache: true
+  a3_scalar:
+    planner_id: bitstar_a3
+    scalar_cost: true
+  a3_bvh:
+    planner_id: bitstar_a3
+    collision_index: true
+  a3_optimized:
+    planner_id: bitstar_a3
+    state_cache: true
+    scalar_cost: true
+    collision_index: true
+  a3_batch50:
+    planner_id: bitstar_a3
+    samples_per_batch: 50
+  a3_batch100:
+    planner_id: bitstar_a3
+    samples_per_batch: 100
+  a3_batch400:
+    planner_id: bitstar_a3
+    samples_per_batch: 400
+  a3_two_phase50to200:
+    planner_id: bitstar_a3
+    samples_per_batch: 50
+    batch_after_first_solution: 200
+  a3_optimized_two_phase50to200:
+    planner_id: bitstar_a3
+    state_cache: true
+    scalar_cost: true
+    collision_index: true
+    samples_per_batch: 50
+    batch_after_first_solution: 200
+optional_ablations:
+  enabled: false
+  require_independent_policy_tests: true
+  planners: [bitstar_a1, bitstar_a2]
+optional_extensions:
+  real_maps: false
+  cgal_reference: false
+  aitstar: false
+  abitstar: false
+  physics_simulation: false
+  constrained_3d_comparison: false

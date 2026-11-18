@@ -1,0 +1,20 @@
+{
+    "synthetic_test_fixture":  false,
+    "primary_dataset":  false,
+    "source_fixture":  "build-g5/approximate_analysis_probe/rrtstar_timeout",
+    "original_source_fixture":  "build-g5/correctness_trials/run_ijoqlf28/rrtstar_timeout",
+    "failure_probe":  "logs/g5/approximate_analysis_probe.json",
+    "purpose":  "Byte-identical raw CTest approximate artifact that triggered G5-v1 stop gate; no held-out performance data",
+    "files":  {
+                  "map.t25d":  "60abcf050f4476727b2bc5b485ccd78f0b4b9a3635cb5420814fad2529f493a4",
+                  "map.json":  "9ea5a7e89edb415b629679b7294b32ac63483e72f2fae86d68381bd588cc9dbb",
+                  "request.json":  "0e9527731c6ebb584a0e0e7a50764cc403e7a1b29df76ad79b5fd1315e6ca17a",
+                  "worker.json":  "e50533a65199c8c1293e65c011b88a297768b55d5ccc185f624098faf336896d",
+                  "path_xy.csv":  "e666ca3f6cb907da7599915a64b862b473a6aa031466614260a250b729476fc7",
+                  "path_surface.csv":  "e15648b8bb96ce2cf72e0b0ef15397e72db290c6e48a32bb3309766c2f83391e",
+                  "progress.jsonl":  "86757af7a59253334170ce830444d9b0f344bdbaf181734b0848eaa9ac29bac3",
+                  "stdout.log":  "e50533a65199c8c1293e65c011b88a297768b55d5ccc185f624098faf336896d",
+                  "stderr.log":  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                  "ompl.log":  "5b2038e338cd2600473b38913df3f127076c8e864d9fadd155dfc75518dbdf75"
+              }
+}

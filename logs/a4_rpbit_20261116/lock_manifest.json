@@ -1,0 +1,29 @@
+﻿{
+    "protocol_id":  "a4_rpbitstar_v1",
+    "locked_utc":  "2026-11-16T03:46:05.7959372Z",
+    "primary_method":  "a4_rpbit_l33_m20",
+    "heldout_phase":  "heldout",
+    "heldout_phase_config_sha256":  "c8546ca61ea0dd4f8fda742e436d4d0f7503b66a8d58c73983b6b9ac09c08182",
+    "heldout_map_seeds":  "61001-61010",
+    "heldout_planner_seeds":  "616001-616005",
+    "heldout_started":  false,
+    "note":  "Held-out requires explicit user confirmation and --allow-heldout. Any change to the listed sources, config or binaries after this lock must be recorded before held-out.",
+    "sha256":  {
+                   "configs/a4_rpbitstar_v1.json":  "0078e6218b41956103d97266351534b9ef4799a0e9724bab75f481ad0a20b0ae",
+                   "include/terrain25d/RpBit.hpp":  "d597bf5f62da35ae46f160e2d7395af2099d0259e2f493eac125c92e9967095d",
+                   "src/RpBit.cpp":  "d2eedd2da8622508c36321bfc4e83d1f63e7e85104aaf2a63bf26d10251b5eee",
+                   "apps/RpBitWorker.inc":  "27a93aa4bfe85d92daaf4609c1b226400f7e37d113d18fd2712e7ac480408b3d",
+                   "apps/terrain_benchmark.cpp":  "8f3473b6fdf4d50102c1326cbe0552553a4405c7e4a13ad626212a9e24a1bfd8",
+                   "cmake/RpBitTargets.cmake":  "ea3864fc5f545db4e271ec95191349de077f5cf9e6fef205542708a38d10b482",
+                   "CMakeLists.txt":  "f24f926fd0dfaa50bfa0a21204626f2df67a8d85986e2fcee9a2a0b45e019c73",
+                   "tools/rp_bit_protocol.py":  "07b89e45ffd2ea9807f6ba090a9d2156e77f82d5d63ae5a64955f3d72b2df182",
+                   "tools/run_rp_bit.py":  "86d8c3617490dc8bf8478d90b2d0ad35a091cd317b540623888716b49a84780a",
+                   "tools/rp_bit_validation.py":  "d828b32966f9cae727f2094ace77fb3c697251c7be88298273cb2070dda234a7",
+                   "tools/analyze_rp_bit.py":  "8297620d7e10d23656598eec24e2ca0670bd2e9ec4b7da8cadd91e7de7c48a0f",
+                   "tests/integration/rp_bit_tests.cpp":  "62a28d13a8bc588919c41685cbf8424444de5d5e22e0baad896acca787b308d8",
+                   "tests/test_rp_bit_worker.py":  "9d654ac16edfbe6a2fd63d83e5022e04ef28785076436d6be449e3290af80357",
+                   "tests/test_rp_bit_tooling.py":  "651e2b87ef390c96ceff33c6f8c8baf24c7be3b9c75418ab2c53c06b09fbf053",
+                   "build-a4-rpbit/terrain_benchmark.exe":  "0dbdc60d2c834773f9c89142e4abb5baade13d7e613fbff173390658d7897f79",
+                   "build-a4-rpbit/libterrain_compare_c.dll":  "06fbae4b6220ec60914749b57c5be023558854e1de0e1abe4a6a4e941b106848"
+               }
+}

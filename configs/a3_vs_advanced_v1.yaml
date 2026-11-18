@@ -1,0 +1,124 @@
+# Locked, held-out comparison campaign. This is a design/protocol input, not a
+# claim that the 400 trials have already been run.
+schema_version: 2
+project: bitstar_25d
+language: vi
+model:
+  state: xy
+  local_connector: straight_xy_lifted_to_piecewise_affine_heightfield
+  objective: surface_length
+  surface_interpolation: fixed_diagonal_triangles
+  cell_diagonal: southwest_to_northeast
+  height_units: m
+  coordinate_units: m
+  nodata_policy: forbidden
+  obstacle_contact_policy: forbidden
+  include_outside_map_as_forbidden: true
+  robot_radius_m: 0.30
+  safety_margin_m: 0.10
+  max_slope_deg: 35.0
+  roughness_limit_m: null
+  roughness_window_m: 1.0
+  goal: singleton
+  goal_roundoff_tolerance_m: 1.0e-9
+  numerical_abs_tolerance_m: 1.0e-8
+  numerical_rel_tolerance: 1.0e-8
+algorithm:
+  nearest_neighbor_metric: euclidean_xy
+  bitstar_connection: k_nearest
+  bitstar_samples_per_batch: 200
+  bitstar_rewire_factor: 1.1
+  bitstar_just_in_time_sampling: false
+  informed_sample_attempts_per_call: 100
+  informed_measure_policy: audit_and_use_documented_conservative_fallback
+  edge_cache: false
+  graph_pruning_requested: true
+  fail_if_requested_variant_not_effective: true
+  simplification: false
+  approximate_solution_counts_as_success: false
+execution:
+  jobs: 1
+  one_process_per_trial: true
+  seed_before_creating_planner: true
+  shuffle_trial_order_seed: 73131
+  save_trial_manifest: true
+  resume_by_config_hash: true
+  watchdog_grace_s: 5.0
+  memory_limit_mb: 4096
+  default_profile: advanced
+  full_requires_explicit_flag: true
+  timing_origin: immediately_before_solve
+  record_preprocessing_separately: true
+  record_setup_separately: true
+  offline_validation_separately: true
+logging:
+  progress_interval_s: 0.05
+  save_improvement_events: true
+  save_improvement_paths: true
+  save_ompl_benchmark_log: true
+  save_path_xy: true
+  save_path_surface_breakpoints: true
+  save_full_tree: false
+  keep_failures: true
+  strict_json_no_nan_or_infinity: true
+analysis:
+  target_relative_tolerances: [0.10, 0.05, 0.02]
+  require_reference_provenance: true
+  confidence_level: 0.95
+  bootstrap_unit_order: [map, query, seed]
+  ignore_unexecuted_trials_in_success_denominator: true
+  separately_report_unexecuted_trials: true
+  include_executed_timeouts_in_success_denominator: true
+profiles:
+  advanced:
+    map_extent_m: [40.0, 40.0]
+    grid_spacing_m: 0.1
+    families: [traversable_hill, ridge_pass, rolling_terrain, narrow_passage, mixed_obstacles]
+    maps_per_family: 10
+    queries_per_map: 1
+    map_seeds: [3001, 3002, 3003, 3004, 3005, 3006, 3007, 3008, 3009, 3010]
+    planner_seeds: [91001, 91002]
+    planners: [bitstar_a3, abitstar, aitstar, lazyprmstar_hauser2015]
+    planning_budget_s: 5.0
+    purpose: held_out_a3_vs_advanced_algorithms
+optional_ablations:
+  enabled: false
+  require_independent_policy_tests: true
+  planners: [bitstar_a1, bitstar_a2]
+optional_extensions:
+  real_maps: false
+  cgal_reference: false
+  aitstar: false
+  abitstar: false
+  physics_simulation: false
+  constrained_3d_comparison: false
+advanced_benchmark:
+  protocol_id: a3_vs_advanced_v1
+  planner_ids: [bitstar_a3, abitstar, aitstar, lazyprmstar_hauser2015]
+  primary_planner_id: bitstar_a3
+  comparator_planner_ids: [abitstar, aitstar, lazyprmstar_hauser2015]
+  informed_planner_ids: [bitstar_a3, abitstar, aitstar]
+  required_query_ids: [q0]
+  order_policy: latin_square_problem_slots_v1
+  expected_trials: 400
+  planner_block_size: 4
+  required_allow_flag: --allow-advanced-benchmark
+  seed_replacement_policy: forbidden_predeclared_held_out_seeds
+  timer_scope: planner_collection_offline_validation_analysis_report
+  collection_soft_stop_s: 5400.0
+  validation_checkpoint_s: 6600.0
+  hard_finalize_s: 7200.0
+  bootstrap_replicates: 2000
+  bootstrap_seed: 73132
+  report_metrics:
+    - validated_success
+    - first_solution_time_s
+    - cost_terrain_m_at_budget
+    - length_xy_m_final
+    - actual_solve_wall_s
+    - worker_wall_s
+    - validation_wall_s
+    - peak_rss_mb
+    - motion_validity_calls
+    - state_validity_calls
+    - coverage
