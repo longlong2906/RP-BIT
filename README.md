@@ -57,6 +57,8 @@ Build Boost và OMPL mất khá lâu (cỡ vài chục phút với 4 lõi).
 ## Build trên Windows
 
 Đã dùng MinGW-w64 g++ và Ninja đặt tại `C:/mingw64/bin`. Một số test trong `cmake/` ghi cứng đường dẫn này.
+Hãy clone vào một đường dẫn ngắn, ví dụ `C:\src\bit25d`. Một số test tạo thư mục tạm khá sâu, và nếu clone nằm
+sâu (ví dụ dưới `AppData\Local\Temp\...`) thì đường dẫn vượt giới hạn 260 ký tự của Windows làm test thất bại.
 Cần Python 3.12 với `numpy==1.26.4 scipy==1.11.4 matplotlib==3.10.7 PyYAML==6.0.2 psutil==5.9.8`. Tệp lock
 `requirements-*.txt` chỉ có hash cho wheel Linux.
 
