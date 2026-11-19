@@ -70,6 +70,19 @@ def validate_request(request):
         if engine != "cpp" or request["sem_convergence_stop"] is None:
             raise ValueError("unregistered SEM convergence stop")
         check_convergence_stop(request["sem_convergence_stop"])
+    # Optional PUTN settings of the A4 comparison: the slope term of tau and the same convergence stop.
+    if "putn_tau_slope_cap_deg" in request:
+        cap = request["putn_tau_slope_cap_deg"]
+        if backend != "putn" or type(cap) is not float or not math.isfinite(cap) or not 0 < cap <= 90:
+            raise ValueError("unregistered PUTN tau slope cap")
+    if "putn_convergence_stop" in request:
+        from sem_native_cpp import check_convergence_stop
+        if backend != "putn" or request["putn_convergence_stop"] is None:
+            raise ValueError("unregistered PUTN convergence stop")
+        try:
+            check_convergence_stop(request["putn_convergence_stop"])
+        except ValueError:
+            raise ValueError("unregistered PUTN convergence stop") from None
     if file_hash(request["cloud_path"]) != request["cloud_sha256"]:
         raise ValueError("frozen point-cloud hash mismatch")
     if request.get("map_sha256") and file_hash(request["map_path"]) != request["map_sha256"]:
@@ -144,7 +157,8 @@ def run(request_file, output):
                 native = make_sem()
             result["native_model"] = copy.deepcopy(model.metadata)
         else:
-            native = PutnBridge(terrain, paper=True, points=points)
+            cap = request.get("putn_tau_slope_cap_deg")
+            native = PutnBridge(terrain, paper=True, points=points, tau_slope_cap_deg=cap)
             result["native_model"] = {
                 "version": "putn_pf_rrtstar_paper_v2", "voxel_resolution_m": .1,
                 "plane_fit_radius_m": .5, "com_height_m": .7, "step_size_m": .4,
@@ -154,6 +168,10 @@ def run(request_file, output):
                 "projection": "exact_H_support_xy", "nearest_metric": "euclidean_xy",
                 "informed_proposal": "uniform_xy_filtered_by_com_distance_lower_bound",
                 "upstream_commit": "a12c900d0965a7a7ea3d4bb7408f8ccf3afdafad"}
+            if cap is not None:
+                # Declared A4 adaptation: the slope term alone reaches tau = 1 at `cap` (source: 10 degrees).
+                result["native_model"].update(version="putn_pf_rrtstar_paper_v2_slope_cap",
+                                              tau_slope_cap_deg=cap, tau_slope_weight_per_deg=1./cap)
         timings["preprocessing_s"] += time.perf_counter()-model_begin
         result["native_model"]["conversion"] = conversion
         result["native_model"]["common_a3_risk_field_enabled"] = False
@@ -213,9 +231,12 @@ def run(request_file, output):
 
         args = (request["start"], request["goal"], request["planner_seed"], request["planning_budget_s"])
         if request["backend"] == "putn":
+            if "putn_convergence_stop" in request:
+                native.set_convergence_stop(request["putn_convergence_stop"])
             rc = native.solve(*args, True, request.get("work_iterations", 0), incumbent)
             status = {1: "EXACT_SOLUTION", 0: "TIMEOUT", -2: "INVALID_NATIVE_ENDPOINTS"}.get(rc, "ERROR")
-            result["counters"] = {"putn_statistics": native.statistics}
+            statistics = native.statistics
+            result["counters"] = {"putn_statistics": statistics, "iterations": int(statistics[0])}
         else:
             if portfolio_clock:
                 status = native.solve(*args, incumbent, request.get("work_iterations", 0),
@@ -224,9 +245,10 @@ def run(request_file, output):
                 status = native.solve(*args, incumbent, request.get("work_iterations", 0))
             result["counters"] = copy.deepcopy(native.counters)
         timings["solve_s"] = time.perf_counter()-solve_begin
-        if request.get("sem_convergence_stop"):
+        outcome = dict(sem="sem_convergence", putn="putn_convergence").get(request["backend"])
+        if outcome and request.get(outcome + "_stop"):
             work = request.get("work_iterations", 0)
-            result["sem_convergence"] = dict(native.convergence, rule=copy.deepcopy(request["sem_convergence_stop"]))
+            result[outcome] = dict(native.convergence, rule=copy.deepcopy(request[outcome + "_stop"]))
             result["termination_reason"] = (
                 "CONVERGED_NO_IMPROVEMENT" if native.convergence["converged"] else
                 "WORK_BUDGET" if work and result["counters"]["iterations"] >= work else

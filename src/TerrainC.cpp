@@ -2,6 +2,7 @@
 #include "terrain25d/PutnStatic.hpp"
 #include <chrono>
 #include <fstream>
+#include <limits>
 #include <memory>
 #include <stdexcept>
 
@@ -71,15 +72,23 @@ void *tc_putn_create(void *p) {
     catch(const std::exception &e){last_error=e.what();return nullptr;}
     catch(...){last_error="unknown C++ exception";return nullptr;}
 }
-void *tc_putn_create_paper(void *p,const double *xyz,size_t count) {
+void *tc_putn_create_paper_slope(void *p,const double *xyz,size_t count,double cap) {
     last_error.clear();try {
         if(!xyz||!count||count>100000000)throw std::invalid_argument("invalid paper master cloud");
         std::vector<terrain25d::Point3> cloud;cloud.reserve(count);
         for(size_t i=0;i<count;++i)cloud.push_back({xyz[3*i],xyz[3*i+1],xyz[3*i+2]});
-        return new terrain25d::PutnStatic(ctx(p).terrain,cloud,true);
+        return new terrain25d::PutnStatic(ctx(p).terrain,cloud,true,cap);
     }catch(const std::exception &e){last_error=e.what();return nullptr;}
     catch(...){last_error="unknown paper model exception";return nullptr;}
 }
+void *tc_putn_create_paper(void *p,const double *xyz,size_t count) {return tc_putn_create_paper_slope(p,xyz,count,10.);}
+int tc_putn_set_convergence_stop(void *p,double eps,uint64_t window){return guarded([&]{
+    planner(p).setConvergenceStop(eps,window);return 1;});}
+int tc_putn_convergence(void *p,double *out){return guarded([&]{
+    if(!out)throw std::invalid_argument("null convergence output");const auto &c=planner(p).convergence();
+    out[0]=c.has_reference?c.reference_cost:std::numeric_limits<double>::quiet_NaN();
+    out[1]=static_cast<double>(c.reference_iteration);return c.converged?1:0;
+});}
 int tc_putn_snapshot_features(void *p,double *out,size_t capacity){return guarded([&]{
     const auto &planes=planner(p).lastSnapshot().native_planes;
     if(!out)return static_cast<int>(planes.size());

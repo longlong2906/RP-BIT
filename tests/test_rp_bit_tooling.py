@@ -390,6 +390,189 @@ class ValidationConvergenceTests(unittest.TestCase):
             native_objective_value=99.8)])), inconsistent)
 
 
+PUTN_ARMS = ("putn_slope35", "putn_source")
+
+
+class PutnConfigTests(unittest.TestCase):
+    """PUTN dev preview: two self-stopping PUTN arms beside the self-stop SEM-RRT* and the locked A4, 5 s."""
+
+    def setUp(self):
+        self.config = protocol.load_config(protocol.PUTN_DEV_CONFIG)
+
+    def test_arms_and_budget(self):
+        selfstop = protocol.load_config(ROOT / "configs/a4_rpbitstar_v1_selfstop_dev.json")
+        methods = self.config["methods"]
+        for name in (protocol.NATIVE, "a4_rpbit_l33_m20"):
+            self.assertEqual(methods[name], selfstop["methods"][name], name)
+        # Same convergence rule as SEM-RRT*; the declared cap is the protocol slope cap; the source arm has none.
+        self.assertEqual(methods["putn_slope35"], dict(kind=protocol.PUTN, tau_slope_cap_deg=35., convergence_stop=STOP))
+        self.assertEqual(methods["putn_source"], dict(kind=protocol.PUTN, convergence_stop=STOP))
+        self.assertEqual(methods["putn_slope35"]["tau_slope_cap_deg"], self.config["safety"]["slope_cap_deg"])
+        dev = self.config["phases"]["dev_putn"]
+        self.assertEqual((dev["maps"], dev["map_seeds"], dev["planning_budget_s"]), ("dev", [41001, 41002, 41003], 5.))
+        self.assertTrue(all(t <= dev["planning_budget_s"] for t in self.config["analysis"]["checkpoints_s"]))
+        self.assertEqual(len(protocol.inventory(self.config, "dev_putn")), 300)
+        self.assertFalse(any(name.startswith("heldout") for name in self.config["phases"]))
+
+    def test_putn_requests(self):
+        info = dict(map_path=str(ROOT / "tests/fixtures/map.t25d"), cloud_path=str(ROOT / "tests/fixtures/cloud.npy"),
+                    cloud_sha256="cloud", map_sha256="map", start=[2., 10.], goal=[18., 10.])
+        with tempfile.TemporaryDirectory() as folder:
+            bridge = Path(folder) / "libterrain_compare_c.dll"
+            bridge.write_bytes(b"bridge")
+            entries = protocol.inventory(self.config, "dev_putn")
+            for name in PUTN_ARMS:
+                request = protocol.request_for(next(e for e in entries if e["method"] == name), info, self.config,
+                                               bridge=bridge)
+                self.assertEqual((request["backend"], request["track"], request["planner_id"], request["objective_type"]),
+                                 ("putn", "native", "putn_native_paper_v2", "native"))
+                self.assertEqual((request["planning_budget_s"], request["work_iterations"], request["variant_id"]),
+                                 (5., 0, name))
+                self.assertEqual((request["map_sha256"], request["bridge_library"]), ("map", str(bridge.resolve())))
+                self.assertEqual(request["putn_convergence_stop"], STOP)
+                self.assertEqual(request.get("putn_tau_slope_cap_deg"), 35. if name == "putn_slope35" else None)
+                for key in ("algorithm_budget_policy", "sem_convergence_stop", "sem_engine"):
+                    self.assertNotIn(key, request)
+
+    def test_invalid_putn_methods(self):
+        for change in (dict(engine="cpp"), {"lambda": 30.}, dict(tau_slope_cap_deg=35), dict(tau_slope_cap_deg=0.),
+                       dict(tau_slope_cap_deg=90.5), dict(convergence_stop=None),
+                       dict(convergence_stop=dict(STOP, relative_eps=0.))):
+            config = copy.deepcopy(self.config)
+            config["methods"]["putn_slope35"].update(change)
+            with tempfile.TemporaryDirectory() as folder:
+                path = Path(folder) / "config.json"
+                path.write_text(json.dumps(config), encoding="utf-8")
+                with self.assertRaises(ValueError, msg=str(change)):
+                    protocol.load_config(path)
+
+    def test_runner_sends_putn_to_the_native_worker(self):
+        seen = {}
+
+        def collect(task, *, request_builder, is_native):
+            seen.update({name: is_native(dict(method=name)) for name in task["config"]["methods"]})
+        with mock.patch("run_sem_exposure._collect_trial", collect):
+            runner._collect(dict(config=self.config))
+        self.assertEqual(seen, {protocol.NATIVE: True, "a4_rpbit_l33_m20": False, "putn_slope35": True, "putn_source": True})
+
+
+class PutnKaggleConfigTests(unittest.TestCase):
+    """PUTN held-out on Kaggle: the dev methods unchanged, 10 s cap, one timed lane, fresh seeds, validation on 4 cores."""
+
+    def setUp(self):
+        self.config = protocol.load_config(protocol.PUTN_KAGGLE_CONFIG)
+
+    def test_only_budget_execution_and_phases_change(self):
+        dev = protocol.load_config(protocol.PUTN_DEV_CONFIG)
+        for key in ("protocol_id", "schema_version", "safety", "methods"):
+            self.assertEqual(self.config[key], dev[key], key)
+        self.assertEqual(self.config["analysis"], dict(dev["analysis"], checkpoints_s=[.5, 1., 2., 5., 10.]))
+        selfstop = protocol.load_config(protocol.SELFSTOP_CONFIG)
+        self.assertEqual(self.config["execution"], dict(selfstop["execution"], validation_cores=[0, 1, 2, 3]))
+        phases = self.config["phases"]
+        self.assertEqual(set(phases), {"smoke_putn", "gate_putn", "heldout_putn"})
+        self.assertEqual(phases["smoke_putn"], dev["phases"]["smoke_putn"])
+        for name in ("gate_putn", "heldout_putn"):
+            self.assertEqual((phases[name]["maps"], phases[name]["planning_budget_s"], phases[name]["methods"]),
+                             ("generate", 10., list(dev["methods"])), name)
+        self.assertEqual((phases["gate_putn"]["map_seeds"], phases["gate_putn"]["planner_seeds"]), ([51001], [516001]))
+        held = phases["heldout_putn"]
+        fresh = set(held["map_seeds"]) | set(held["planner_seeds"])
+        self.assertEqual(fresh, set(range(101001, 101011)) | set(range(1016001, 1016006)))
+        self.assertEqual(len(protocol.inventory(self.config, "heldout_putn")), 1000)
+        for path in sorted((ROOT / "configs").glob("a4_rpbitstar_v1*.json")):
+            config = protocol.load_config(path)
+            for name, phase in config["phases"].items():
+                if (path, name) != (protocol.PUTN_KAGGLE_CONFIG, "heldout_putn"):
+                    self.assertFalse(fresh & (set(phase["map_seeds"]) | set(phase["planner_seeds"])), (path.name, name))
+
+    def test_invalid_validation_cores(self):
+        for value in ([], [0, 0], [-1], [1.], "0", [True]):
+            config = copy.deepcopy(self.config)
+            config["execution"]["validation_cores"] = value
+            with tempfile.TemporaryDirectory() as folder:
+                path = Path(folder) / "config.json"
+                path.write_text(json.dumps(config), encoding="utf-8")
+                with self.assertRaises(ValueError, msg=repr(value)):
+                    protocol.load_config(path)
+
+    def test_validation_uses_the_validation_cores(self):
+        seen = []
+
+        def lanes(queues, target, control, *, cores):
+            seen.append((len(queues), cores))
+            return dict(status="COMPLETE")
+        for execution, expected in ((dict(cores=[0], validation_cores=[0, 1, 2, 3]), [0, 1, 2, 3]), (dict(cores=[2]), [2])):
+            config = dict(execution=dict(execution, reserve_bytes_per_worker=1))
+            with tempfile.TemporaryDirectory() as folder:
+                directory = Path(folder)
+                (directory / "trials/t").mkdir(parents=True)
+                (directory / "trials/t/raw_inventory.json").write_text("{}", encoding="utf-8")
+                manifest = dict(phase="p", config_sha256="c", maps=dict(m={}),
+                                entries=[dict(trial_id="t", map_id="m", method="a4_rpbit_l33_m20")])
+                (directory / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+                with mock.patch.object(runner, "run_spawn_lanes", lanes):
+                    runner.validate(directory, config, False)
+            self.assertEqual(seen.pop(), (len(expected), expected))
+
+    def test_held_out_needs_the_flag(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with self.assertRaisesRegex(SystemExit, "held-out requires"):
+                runner.run(Path(folder) / "out", "heldout_putn", "missing", "missing", config_path=protocol.PUTN_KAGGLE_CONFIG)
+            self.assertFalse((Path(folder) / "out").exists())
+
+
+class ValidationPutnTests(unittest.TestCase):
+    """A PUTN trial must have run the registered convergence stop and tau slope cap, and obey the stop."""
+
+    def verdict(self, method_update, request_update, worker_update):
+        import rp_bit_validation as validation
+        method = {k: v for k, v in dict(dict(kind=protocol.PUTN, tau_slope_cap_deg=35., convergence_stop=STOP),
+                                        **method_update).items() if v is not None}
+        config = dict(methods={"putn_slope35": method}, analysis=dict(sem_equivalent_lambda=30., checkpoints_s=[1.]))
+        entry = dict(trial_id="m__s1__putn_slope35", method="putn_slope35")
+        request = {k: v for k, v in dict(dict(planning_budget_s=5., start=[0., 0.], goal=[1., 1.],
+                   putn_convergence_stop=STOP, putn_tau_slope_cap_deg=35.), **request_update).items() if v is not None}
+        worker = dict(planner_status="EXACT_SOLUTION", native_model=dict(tau_slope_cap_deg=35.),
+                      snapshots=[dict(snapshot_id="a", elapsed_s=.2, native_objective_value=100.),
+                                 dict(snapshot_id="b", elapsed_s=.4, native_objective_value=99.95)],
+                      counters=dict(iterations=5000, putn_statistics=[0.] * 12), termination_reason="CONVERGED_NO_IMPROVEMENT",
+                      putn_convergence=dict(converged=True, reference_cost=100., reference_iteration=1000, rule=STOP))
+        worker.update(worker_update)
+        with tempfile.TemporaryDirectory() as folder:
+            directory = Path(folder)
+            for name, body in (("execution.json", dict(status="COMPLETED")), ("request.json", request), ("worker.json", worker)):
+                (directory / name).write_text(json.dumps(body), encoding="utf-8")
+            with mock.patch.object(validation, "score_path", lambda *args: dict(safe=True)), \
+                    mock.patch.object(validation, "_csv_path", lambda path: []):
+                return validation.validate_trial(directory, entry, {}, config, oracle=None, field=None)["correctness_errors"]
+
+    def test_rule_cap_and_stop_point(self):
+        self.assertEqual(self.verdict({}, {}, {}), [])
+        source = dict(tau_slope_cap_deg=None), dict(putn_tau_slope_cap_deg=None)
+        self.assertEqual(self.verdict(*source, dict(native_model={})), [])
+        # Stopped by the time cap instead (or no solution): nothing to check beyond the rule.
+        self.assertEqual(self.verdict({}, {}, dict(termination_reason="TIME_BUDGET", counters=dict(iterations=7),
+            putn_convergence=dict(converged=False, reference_cost=None, reference_iteration=0, rule=STOP))), [])
+        cap = ["putn_tau_slope_cap_mismatch"]
+        self.assertEqual(self.verdict({}, dict(putn_tau_slope_cap_deg=None), {}), cap)
+        self.assertEqual(self.verdict({}, {}, dict(native_model={})), cap)
+        self.assertEqual(self.verdict(*source, {}), cap)
+        mismatch = ["putn_convergence_stop_mismatch"]
+        self.assertEqual(self.verdict({}, {}, dict(putn_convergence=None)), mismatch)
+        self.assertEqual(self.verdict({}, dict(putn_convergence_stop=None), {}), mismatch)
+        self.assertEqual(self.verdict({}, dict(putn_convergence_stop=dict(STOP, window_iterations=10)), {}), mismatch)
+        self.assertEqual(self.verdict(dict(convergence_stop=None), dict(putn_convergence_stop=None), {}), mismatch)
+        # A SEM outcome is not a PUTN outcome.
+        self.assertEqual(self.verdict({}, {}, dict(putn_convergence=None, sem_convergence=dict(
+            converged=True, reference_cost=100., reference_iteration=1000, rule=STOP))), mismatch)
+        inconsistent = ["putn_convergence_inconsistent"]
+        self.assertEqual(self.verdict({}, {}, dict(counters=dict(iterations=4999))), inconsistent)
+        self.assertEqual(self.verdict({}, {}, dict(termination_reason="TIME_BUDGET")), inconsistent)
+        self.assertEqual(self.verdict({}, {}, dict(snapshots=[dict(snapshot_id="a", elapsed_s=.2,
+            native_objective_value=99.8)])), inconsistent)
+
+
 def legacy_inventory(config, phase):
     """The schedule before derived methods existed: every method rotates."""
     settings, entries, block = config["phases"][phase], [], 0

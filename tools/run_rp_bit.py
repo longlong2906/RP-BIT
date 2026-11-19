@@ -32,7 +32,10 @@ def phase_config(config, phase):
 
 def _collect(task):
     from run_sem_exposure import _collect_trial
-    return _collect_trial(task, request_builder=protocol.request_for)
+    methods = task["config"]["methods"]
+    # SEM-RRT* and PUTN both run in the native worker, without the planner SEM field file.
+    return _collect_trial(task, request_builder=protocol.request_for,
+                          is_native=lambda entry: methods[entry["method"]]["kind"] in protocol.NATIVE_KINDS)
 
 
 def _validate_map(task):
@@ -74,13 +77,14 @@ def _lanes(tasks, cores, key):
     return lanes
 
 
-def _memory_preflight(config):
+def _memory_preflight(config, cores=None):
     import psutil
     execution = config["execution"]
-    need = len(execution["cores"]) * execution["reserve_bytes_per_worker"]
+    lanes = len(execution["cores"] if cores is None else cores)
+    need = lanes * execution["reserve_bytes_per_worker"]
     available = psutil.virtual_memory().available
     if need > .8 * available:
-        raise SystemExit(f"BLOCKED_MEMORY: need {need} bytes for {len(execution['cores'])} lanes, {available} available")
+        raise SystemExit(f"BLOCKED_MEMORY: need {need} bytes for {lanes} lanes, {available} available")
 
 
 def collect(directory, config, phase, worker, bridge, stop_dispatch_epoch=None):
@@ -114,10 +118,11 @@ def validate(directory, config, full, methods=None):
         if (trial / "raw_inventory.json").is_file() and not verdict.exists():
             grouped[entry["map_id"]].append(dict(entry=entry, directory=str(trial), verdict=str(verdict)))
     if grouped:
-        _memory_preflight(config)
+        # Validation is not timed: an optional validation_cores list may give it more lanes than the collection.
+        cores = config["execution"].get("validation_cores", config["execution"]["cores"])
+        _memory_preflight(config, cores)
         tasks = [dict(task_id="validate_" + name, index=index, info=manifest["maps"][name], items=items,
                       config=config, full=full) for index, (name, items) in enumerate(sorted(grouped.items()))]
-        cores = config["execution"]["cores"]
         control = directory / "execution_control" / (("validation_full_" if full else "validation_") + time.strftime("%Y%m%dT%H%M%S"))
         outcome = run_spawn_lanes(_lanes(tasks, cores, lambda task: task["index"]), _validate_map, control, cores=cores)
         if outcome["status"] != "COMPLETE":

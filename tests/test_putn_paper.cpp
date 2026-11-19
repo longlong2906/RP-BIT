@@ -46,6 +46,39 @@ int main(){try{
     check(s.solve({4,4},{5,4},11,.1,true,1,{})==-2,"native endpoint rejection missing");
     bool denied=false;try{p.solve({2,2},{3,2},1,.1,false,1,{});}catch(const std::invalid_argument &){denied=true;}
     check(denied,"paper model accepted common-cost label");
-    std::cout<<"PASS paper PUTN Eq1/8, dense occupancy, singular guard, native endpoint and COM informed hook\n";
+    // A4 options. Slope cap 10 deg is the source weight bit for bit; 35 deg admits the 16.7 deg plane.
+    PutnStatic ten(steep,cloud(.3),true,10.),cap35(steep,cloud(.3),true,35.);
+    for(Point q:{Point{4,4},Point{2.3,5.1}}){auto x=s.fitPlane(q),y=ten.fitPlane(q);
+        check(x.available==y.available&&x.traversability==y.traversability&&x.slope_deg==y.slope_deg,"cap 10 is not the source");}
+    auto wide=cap35.fitPlane({4,4});
+    check(wide.available&&wide.slope_deg>16&&wide.traversability<1,"cap 35 rejected a 16.7 deg plane");
+    close(wide.traversability,1000*wide.flatness+wide.slope_deg/35.+wide.sparsity);
+    check(cap35.solve({4,4},{5,4},11,1,true,400,{})==1,"cap 35 endpoints or search failed");
+    bool capped=false;try{PutnStatic bad(steep,cloud(.3),true,0.);}catch(const std::invalid_argument &){capped=true;}
+    check(capped,"zero slope cap accepted");
+    // Convergence stop (SEM-RRT* rule): stop one window after the last 0.1% improvement, and the
+    // stopped search is an exact prefix of the same search without the stop.
+    PutnStatic plain(t,cloud(),true),stopping(t,cloud(),true);
+    std::vector<PutnSnapshot> full,cut;
+    check(plain.solve({1,1},{7,7},5,1,true,6000,[&](const auto &e){full.push_back(e);})==1,"unstopped solve failed");
+    check(!plain.convergence().converged,"stop active by default");
+    stopping.setConvergenceStop(1e-3,300);
+    check(stopping.solve({1,1},{7,7},5,1,true,6000,[&](const auto &e){cut.push_back(e);})==1,"stopped solve failed");
+    const auto &c=stopping.convergence();
+    check(c.converged&&c.has_reference&&stopping.stats().iterations==c.reference_iteration+300,"stop point");
+    check(!cut.empty()&&cut.size()<=full.size(),"stopped events");
+    for(std::size_t k=0;k<cut.size();++k){
+        check(cut[k].path.size()==full[k].path.size()&&cut[k].planner_objective==full[k].planner_objective,"not a prefix");
+        for(std::size_t i=0;i<cut[k].path.size();++i)
+            check(cut[k].path[i].x==full[k].path[i].x&&cut[k].path[i].y==full[k].path[i].y,"prefix path differs");
+    }
+    check(cut.back().planner_objective>=c.reference_cost*(1-1e-3)&&cut.back().planner_objective<=c.reference_cost,
+          "improvement inside the window");
+    bool rejected=false;try{stopping.setConvergenceStop(0.,10);}catch(const std::invalid_argument &){rejected=true;}
+    check(rejected,"zero epsilon accepted");
+    stopping.setConvergenceStop(0.,0);
+    check(stopping.solve({1,1},{7,7},5,1,true,500,{})==1&&!stopping.convergence().converged,"stop not cleared");
+    std::cout<<"PASS paper PUTN Eq1/8, dense occupancy, singular guard, native endpoint and COM informed hook;"
+               " A4 slope cap and convergence stop\n";
     return 0;
 }catch(const std::exception &e){std::cerr<<e.what()<<'\n';return 1;}}

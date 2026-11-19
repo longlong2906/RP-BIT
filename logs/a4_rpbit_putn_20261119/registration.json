@@ -1,0 +1,257 @@
+{
+ "record": "a4_rpbit_putn_registration_v1",
+ "protocol_id": "a4_rpbitstar_v1",
+ "created_utc": "2026-11-19T03:55:40.867888+00:00",
+ "purpose": "Registered before any trial of the held-out phase of this experiment. The Kaggle controller refuses a config whose hashes differ and writes heldout_deviation_record.json with the Linux identity before the first held-out trial.",
+ "user_decision_2026_11_19": "After the PUTN dev preview (5 s) the user asked for a Kaggle held-out comparing A4, SEM-RRT* and PUTN with a 10 s budget per trial. In a question dialog the user chose: (1) keep both PUTN arms of the dev preview (putn_slope35 and putn_source); (2) judge A4 against SEM-RRT* by the 10 checks of plan section 5.3, and A4 against EACH PUTN arm by the same 10 checks, every outcome reported. Seeds, lanes and the 10 s cap for every method follow from that request.",
+ "question": "On fresh maps, with every method in C++ on the same Kaggle core, each stopping on its own convergence under a 10 s cap, does the locked primary A4 meet the 10 checks of plan section 5.3 (a) against the self-stopping C++ SEM-RRT* and (b) against each of the two self-stopping PUTN arms?",
+ "relation_to_previous": {
+  "heldout_kaggle": "Spent (2026-11-16): Python SEM-RRT* with a fixed 7425 iterations; never rerun, never pooled.",
+  "heldout_fairtime": "Spent (2026-11-17, kernel notebook148efabeb1): C++ SEM-RRT* with the full 20 s; never pooled.",
+  "heldout_selfstop": "Spent (2026-11-17, kernel notebook440bf3ea19): A4 and self-stopping C++ SEM-RRT*, 20 s cap; never pooled with this experiment.",
+  "factorial": "The rpRefine factorial held-out (planned seeds 91001-91010 x 916001-916005) is not part of this run; its seeds stay reserved.",
+  "dev_preview": {
+   "phase": "dev_putn (seen dev maps 41001-41003 x planner seeds 416001-416005, local Windows, one lane on core 2, 5 s)",
+   "config": "configs/a4_rpbitstar_v1_putn_dev.json",
+   "config_sha256": "6fc8417d13d82ddcc5d01815455b1d535558d4a6ddc1e760014e8f8305b68fa0",
+   "results": "results/a4_rpbit_putn_dev_20261119/dev_putn",
+   "report": "reports/a4_rpbit_putn_dev_20261119/REPORT.md",
+   "report_json_sha256": "95d67b58c591326600c1e0d4adf4bd08b17e3b23cff37d4c5d008bae8dc2d6b3",
+   "seen_before_registration": true,
+   "outcome": {
+    "trials": 300,
+    "correctness_failures": 0,
+    "terminations": {
+     "a4_rpbit_l33_m20": {
+      "CONVERGED_NO_IMPROVEMENT": 75
+     },
+     "putn_slope35": {
+      "CONVERGED_NO_IMPROVEMENT": 1,
+      "TIME_BUDGET": 74
+     },
+     "putn_source": {
+      "CONVERGED_NO_IMPROVEMENT": 6,
+      "INVALID_NATIVE_ENDPOINTS": 5,
+      "TIME_BUDGET": 64
+     },
+     "sem_native": {
+      "CONVERGED_NO_IMPROVEMENT": 61,
+      "TIME_BUDGET": 14
+     }
+    },
+    "criteria_vs_sem": [
+     {
+      "apl_noninferior": true,
+      "apl_target_lower": true,
+      "j_sem_mean_lower": true,
+      "j_sem_upper95_below_zero": true,
+      "method": "a4_rpbit_l33_m20",
+      "pri_noninferior": true,
+      "pri_target_lower": true,
+      "psr_every_family": true,
+      "psr_pooled": true,
+      "sti_lower": true,
+      "time_lower": true
+     },
+     {
+      "apl_noninferior": true,
+      "apl_target_lower": true,
+      "j_sem_mean_lower": false,
+      "j_sem_upper95_below_zero": false,
+      "method": "putn_slope35",
+      "pri_noninferior": false,
+      "pri_target_lower": false,
+      "psr_every_family": false,
+      "psr_pooled": false,
+      "sti_lower": true,
+      "time_lower": false
+     },
+     {
+      "apl_noninferior": true,
+      "apl_target_lower": true,
+      "j_sem_mean_lower": false,
+      "j_sem_upper95_below_zero": false,
+      "method": "putn_source",
+      "pri_noninferior": false,
+      "pri_target_lower": false,
+      "psr_every_family": false,
+      "psr_pooled": false,
+      "sti_lower": false,
+      "time_lower": false
+     }
+    ],
+    "criteria_contrasts": {
+     "a4_rpbit_l33_m20 - putn_slope35": {
+      "apl_noninferior": false,
+      "apl_target_lower": false,
+      "j_sem_mean_lower": true,
+      "j_sem_upper95_below_zero": true,
+      "method": "a4_rpbit_l33_m20",
+      "pri_noninferior": true,
+      "pri_target_lower": true,
+      "psr_every_family": true,
+      "psr_pooled": true,
+      "sti_lower": true,
+      "time_lower": true
+     },
+     "a4_rpbit_l33_m20 - putn_source": {
+      "apl_noninferior": false,
+      "apl_target_lower": true,
+      "j_sem_mean_lower": true,
+      "j_sem_upper95_below_zero": true,
+      "method": "a4_rpbit_l33_m20",
+      "pri_noninferior": true,
+      "pri_target_lower": true,
+      "psr_every_family": true,
+      "psr_pooled": true,
+      "sti_lower": true,
+      "time_lower": true
+     },
+     "putn_slope35 - putn_source": {
+      "apl_noninferior": true,
+      "apl_target_lower": true,
+      "j_sem_mean_lower": false,
+      "j_sem_upper95_below_zero": false,
+      "method": "putn_slope35",
+      "pri_noninferior": false,
+      "pri_target_lower": false,
+      "psr_every_family": false,
+      "psr_pooled": true,
+      "sti_lower": true,
+      "time_lower": false
+     }
+    },
+    "paired_pairs_contrasts": {
+     "a4_rpbit_l33_m20 - putn_slope35": 57,
+     "a4_rpbit_l33_m20 - putn_source": 48,
+     "putn_slope35 - putn_source": 40
+    }
+   },
+   "nothing_tuned": "Both PUTN arms and the stop rule were declared before the preview; the preview changed no parameter. Only the budget (5 s -> 10 s), the checkpoint grid (adds 10 s), the seeds, the lane (core 0) and the validation lanes change."
+  }
+ },
+ "config": "configs/a4_rpbitstar_v1_putn_kaggle.json",
+ "config_sha256": "b103e37d47884b0847b4fe6ac1c49400145e84fb1d3112337d9fa0e10371fded",
+ "phase_config_sha256": {
+  "smoke_putn": "f5eed935dc9ce6ed280a19ae92ea5561ea70883c01c45c4cb6c35379122e48da",
+  "gate_putn": "70e3f910e141c78a2c39f6e5e5c363da6dc268e9925acb46fc8c810cbca5aebc",
+  "heldout_putn": "2ac23345db741279afcb89eda9e2702642be2c4b04f5231cb7bf5235457f2592"
+ },
+ "gates": [
+  "smoke_putn",
+  "gate_putn"
+ ],
+ "heldout_phase": "heldout_putn",
+ "planned_trials": {
+  "smoke_putn": 28,
+  "gate_putn": 20,
+  "heldout_putn": 1000
+ },
+ "methods": {
+  "sem_native": "SEM-RRT* project reconstruction, C++ search engine (Python/scipy native raster as preprocessing), stops on convergence by the A4 rule (as heldout_selfstop), 10 s wall-clock cap.",
+  "a4_rpbit_l33_m20": "Locked primary (lambda 33, M = 20 convergence batches, refinement on), unchanged since the lock of 2026-11-16T03:46:05.7959372Z; 10 s cap, self-stop on convergence.",
+  "putn_slope35": "PUTN/PF-RRT* paper-first static port (patches/putn-static-adaptation.md) on its own native objective, tau slope term = slope/35 (the protocol slope cap, declared, not tuned), same stop rule as SEM-RRT*, 10 s cap.",
+  "putn_source": "Same port with the source parameters (map1.yaml: tau slope weight 0.1, i.e. a 10 degree cap), same stop rule, 10 s cap."
+ },
+ "convergence_stop": {
+  "rule": {
+   "relative_eps": 0.001,
+   "window_iterations": 4000
+  },
+  "applies_to": [
+   "sem_native",
+   "putn_slope35",
+   "putn_source"
+  ],
+  "definition": "At every iteration boundary after the first solution: if the published native cost is below reference x (1 - relative_eps), it becomes the reference; otherwise, once window_iterations iterations have passed since the last reset, the search stops (CONVERGED_NO_IMPROVEMENT).",
+  "a4": "A4 applies the same test at batch boundaries (20 batches of 200 samples = 4000 samples).",
+  "validation": "tools/rp_bit_validation.py: sem_/putn_convergence_stop_mismatch and sem_/putn_convergence_inconsistent are correctness errors; putn_tau_slope_cap_mismatch checks the declared cap."
+ },
+ "inputs": {
+  "families": [
+   "traversable_hill",
+   "ridge_pass",
+   "rolling_terrain",
+   "narrow_passage",
+   "mixed_obstacles"
+  ],
+  "map_seeds": [
+   101001,
+   101002,
+   101003,
+   101004,
+   101005,
+   101006,
+   101007,
+   101008,
+   101009,
+   101010
+  ],
+  "planner_seeds": [
+   1016001,
+   1016002,
+   1016003,
+   1016004,
+   1016005
+  ],
+  "pairs": 250,
+  "novelty": "map seeds 101001-101010 and planner seeds 1016001-1016005 appear in no earlier config, tool, test, document, log, report or result path (searched 2026-11-19)"
+ },
+ "timing_protocol": [
+  "Kaggle CPU session (no accelerator). execution.cores [0]: one timed lane, one trial at a time, so no two methods ever run concurrently.",
+  "One fresh process per trial, pinned to its lane core, one thread.",
+  "The four methods of a (map, planner seed) block run back to back on the same core; the method order rotates between blocks.",
+  "Solve clocks as in plan 5.3: A4 from before potential construction; SEM-RRT* and PUTN from planner construction, after loading the map and their native preprocessing (SEM raster, PUTN voxel map from the point cloud), reported separately. Time is each method's own stop (convergence or the 10 s cap).",
+  "Validation is not timed and runs only after the collection of a phase is complete; execution.validation_cores [0, 1, 2, 3] lets it use four lanes (new optional key; trials are unaffected)."
+ ],
+ "gates_before_heldout": [
+  "Linux build of the delivered sources; 34 CTest groups: the 31 of fairtime/selfstop plus putn_paper, putn_static and terrain_capi.",
+  "smoke_putn: 7 smoke fixtures, 2 s, all four methods; no correctness error, every A4 trial successful, strict validation.",
+  "gate_putn: the 5 families at map seed 51001, planner seed 516001, 10 s cap, all four methods; same conditions.",
+  "sem_cpp_bit_identity: on the 5 gate_putn maps, planner seeds 516001 and 516002, Python and C++ SEM-RRT* (stop off) each run 7425 iterations and must be identical (10/10) on the Linux runtime of the campaign.",
+  "A PUTN or SEM-RRT* planner failure in a gate is a result, not a gate failure; a correctness error of any method is.",
+  "Any failed gate stops the run before the held-out; the cause is reported, nothing is retuned."
+ ],
+ "primary_criteria": {
+  "source": "plan section 5.3, unchanged; tools/analyze_rp_bit.py criteria(): the 10 checks psr_pooled, psr_every_family, sti_lower, time_lower, j_sem_mean_lower, j_sem_upper95_below_zero, apl_noninferior, pri_noninferior, apl_target_lower, pri_target_lower",
+  "comparisons": [
+   "a4_rpbit_l33_m20 against sem_native (report section \"criteria\").",
+   "a4_rpbit_l33_m20 against putn_slope35 (registered contrast).",
+   "a4_rpbit_l33_m20 against putn_source (registered contrast)."
+  ],
+  "items": [
+   "PSR: A4 >= the other method, pooled and in every family.",
+   "STI: pooled A4 < the other method.",
+   "Time: paired mean of (A4 solve time to its stop - the other method's solve time to its stop) < 0.",
+   "J30 = L_H + 30 E / 40 by the independent oracle: paired mean difference < 0 and its one-sided upper 95% bound < 0 (hierarchical bootstrap map -> seed, 20000 replicates, seed 61016).",
+   "APL and PRI: pooled relative difference upper 95% bound < +1% (non-inferiority); target: pooled mean difference < 0."
+  ],
+  "pairing": "Paired metrics use the slots where both methods end with a final safe path; PSR counts every slot.",
+  "no_overall_verdict": "Each of the three comparisons is reported check by check; no single pass/fail is declared and no check is dropped or added after a result is seen."
+ },
+ "secondary_descriptive": [
+  "putn_slope35 against putn_source (registered contrast) and each PUTN arm against SEM-RRT* (report section \"criteria\").",
+  "Termination reasons and stop times of every method; PUTN failures by reason and family.",
+  "Anytime table at T in {0.5, 1, 2, 5, 10} s (a stopped run keeps its last path).",
+  "A4 time to reach the final J30 of the other method of the same slot (tolerance 0 and 1%)."
+ ],
+ "stated_expectation": "From the dev preview at 5 s (seen maps, Windows): A4 against SEM-RRT* passed all 10 checks. Against PUTN, A4 passed 8 of 10 against putn_slope35 and 9 of 10 against putn_source: APL non-inferiority failed against both (PUTN optimizes length plus traversability and ignores the SEM risk field, so its safe paths are shorter but have PRI +66-73% and far higher J30), and the APL target also failed against putn_slope35 (A4 +3.4%). Expected on the held-out: A4 better on PSR, PRI, J30, STI and Time against both PUTN arms; APL non-inferiority against PUTN likely fails. PUTN rarely stopped on convergence within 5 s (74/75 and 64/75 runs hit the cap); at 10 s its Time is still expected near the cap. putn_slope35 failed every mixed_obstacles slot (missing_sem_support, paths about 0.58 m from obstacles) and putn_source every ridge_pass slot (timeout); similar family failures are expected. Every outcome is reported.",
+ "rules": [
+  "Started trials are never retried; no seeds are added; criteria and analysis are not changed after any held-out result is seen.",
+  "Strict per-snapshot validation of the primary method; fast independent validation of every trial (including the stop rule).",
+  "Results are reported as measured on Kaggle Linux; their Time is not compared with Windows numbers."
+ ],
+ "deviations_from_lock": [
+  "apps/terrain_benchmark.cpp: the 2 dispatch lines of the rpRefine replay worker (factorial, 2026-11-17); A4 output byte-identical on dev.",
+  "CMakeLists.txt, tools/rp_bit_validation.py and the tooling files listed as changed_after_lock in the bundle catalog.",
+  "PUTN port (src/PutnStatic.cpp, src/TerrainC.cpp): tau_slope_cap_deg and the convergence stop; defaults bit-identical to the earlier DLL."
+ ],
+ "limitations": [
+  "PUTN and SEM-RRT* are project reconstructions, not the authors' code; PUTN is a static adaptation (patches/putn-static-adaptation.md).",
+  "PUTN is judged on the SEM risk metrics (PRI, J30) that it does not optimize; its own objective is reported by the worker but not compared.",
+  "Shared cloud VM: background load can add timing noise; the four methods of a block share the core and rotate order.",
+  "The stop window is matched in samples, not in time or work.",
+  "A 10 s cap may stop PUTN before its own convergence; its quality at 10 s is anytime quality."
+ ],
+ "revision": 1
+}

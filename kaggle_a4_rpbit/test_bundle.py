@@ -36,6 +36,19 @@ class NotebookTests(unittest.TestCase):
         self.assertIn('500 lượt', intro)
         self.assertIn('4 000 vòng lặp', intro)
 
+    def test_putn_notebook(self):
+        notebook = package_notebook.create_notebook('payload.b64', 'd' * 64, package_notebook.PROFILES['putn'])
+        code = [''.join(cell['source']) for cell in notebook['cells'] if cell['cell_type'] == 'code']
+        for index, source in enumerate(code):
+            compile(source, f'cell{index}', 'exec')
+        self.assertIn('map seeds 101001-101010', code[1])
+        self.assertIn("'kaggle_a4_rpbit.putn'", code[2])
+        self.assertIn("reports/heldout_putn/REPORT.md", code[2])
+        intro = ''.join(notebook['cells'][0]['source'])
+        self.assertIn('1 000 lượt', intro)
+        self.assertIn('10 s', intro)
+        self.assertIn('34 nhóm CTest', intro)
+
     def test_cells_compile_and_carry_the_registered_identity(self):
         notebook = package_notebook.create_notebook('payload.b64', 'a' * 64)
         code = [''.join(cell['source']) for cell in notebook['cells'] if cell['cell_type'] == 'code']
@@ -66,14 +79,19 @@ class PayloadTests(unittest.TestCase):
                 'tests/test_sem_native_cpp.py', package_notebook.FAIRTIME_REGISTRATION,
                 # both stop on convergence
                 'configs/a4_rpbitstar_v1_selfstop_kaggle.json', 'kaggle_a4_rpbit/selfstop.py',
-                package_notebook.SELFSTOP_REGISTRATION)
+                package_notebook.SELFSTOP_REGISTRATION,
+                # PUTN beside A4 and the self-stop SEM-RRT*
+                'configs/a4_rpbitstar_v1_putn_kaggle.json', 'kaggle_a4_rpbit/putn.py', package_notebook.PUTN_REGISTRATION,
+                'src/PutnStatic.cpp', 'include/terrain25d/PutnStatic.hpp', 'src/TerrainC.cpp', 'include/terrain25d/TerrainC.h',
+                'tools/terrain_compare_bridge.py', 'tests/test_putn_paper.cpp', 'tests/test_putn_static.cpp',
+                'tests/test_terrain_capi.py')
 
     def test_payload_holds_the_registered_sources_only(self):
         catalog = ROOT / '_bundle_catalog.json'
         if catalog.is_file():  # inside the extracted Kaggle payload: membership only, CTest may add files
             names = set(json.loads(catalog.read_text(encoding='utf-8'))['files'])
         else:  # the current delivery; the spent held-out delivery predates the C++ port
-            names = {path.relative_to(ROOT).as_posix() for path in package_notebook.source_files(package_notebook.PROFILES['selfstop'])}
+            names = {path.relative_to(ROOT).as_posix() for path in package_notebook.source_files(package_notebook.PROFILES['putn'])}
         self.assertFalse(set(self.REQUIRED) - names)
         self.assertFalse([name for name in names if name.startswith(('results/', 'build', 'dist/', 'runs/'))])
 
@@ -145,6 +163,8 @@ class ControllerTests(unittest.TestCase):
             fairtime.main(['--started-epoch', '0', '--session-seconds', '10'])
         with self.assertRaises((RuntimeError, ValueError)):
             fairtime.main(['--started-epoch', '0', '--session-seconds', '10'], experiment='selfstop')
+        with self.assertRaises((RuntimeError, ValueError)):
+            fairtime.main(['--started-epoch', '0', '--session-seconds', '10'], experiment='putn')
 
 
 class FairtimeControllerTests(unittest.TestCase):
@@ -241,6 +261,70 @@ class SelfstopControllerTests(unittest.TestCase):
                                correctness_failures=sum(bool(r['correctness_errors']) for r in rows), rows=rows)
                 (directory / 'summary_full.json').write_text(json.dumps(summary), encoding='utf-8')
                 self.assertEqual(bootstrap.gate_verdict(directory, self.config, 'gate_selfstop')['passed'], passed)
+
+
+class PutnControllerTests(unittest.TestCase):
+    """Same controller with the PUTN registration: four methods, 10 s cap, validation on four cores."""
+
+    def setUp(self):
+        self.experiment = fairtime.EXPERIMENTS['putn']
+        self.config = protocol.load_config(protocol.PUTN_KAGGLE_CONFIG)
+
+    def test_registration_and_constants(self):
+        registered = fairtime.check_registration(protocol.PUTN_KAGGLE_CONFIG, self.config, self.experiment)
+        self.assertEqual(registered['planned_trials'], {'smoke_putn': 28, 'gate_putn': 20, 'heldout_putn': 1000})
+        tests = self.experiment['ctest']
+        self.assertEqual(len(set(tests)), 34)
+        self.assertEqual(tests[:31], fairtime.REQUIRED_CTEST)
+        for name, script in (('putn_paper', 'NativePaperTargets'), ('putn_static', 'TerrainCompareTargets'),
+                             ('terrain_capi', 'TerrainCompareTargets')):
+            self.assertIn(f'NAME {name} ', (ROOT / 'cmake' / (script + '.cmake')).read_text(encoding='utf-8'))
+        gate, heldout = self.experiment['identity_gate'], self.experiment['heldout']
+        self.assertEqual({k: v for k, v in gate.items() if k != 'phase'}, {k: v for k, v in fairtime.IDENTITY_GATE.items() if k != 'phase'})
+        self.assertIn(gate['phase'], self.experiment['gates'])
+        self.assertIn(self.config['phases'][gate['phase']]['planner_seeds'][0], gate['seeds'])
+        execution = self.config['execution']
+        self.assertEqual((execution['cores'], execution['validation_cores']), ([0], [0, 1, 2, 3]))
+        self.assertIn(gate['core'], execution['cores'])
+        self.assertEqual(self.config['phases'][heldout]['primary_method'],
+                         json.loads(bootstrap.LOCK.read_text(encoding='utf-8-sig'))['primary_method'])
+        self.assertEqual({phase['planning_budget_s'] for name, phase in self.config['phases'].items() if name != 'smoke_putn'}, {10.})
+        self.assertEqual(self.config['methods'], protocol.load_config(protocol.PUTN_DEV_CONFIG)['methods'])
+        self.assertEqual(self.experiment['module'], package_notebook.PROFILES['putn']['module'])
+
+    def test_a_changed_config_is_refused(self):
+        changed = copy.deepcopy(self.config)
+        changed['methods']['putn_slope35']['tau_slope_cap_deg'] = 30.
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'config.json'
+            path.write_text(json.dumps(changed), encoding='utf-8')
+            with self.assertRaisesRegex(ValueError, 'differs from the registration'):
+                fairtime.check_registration(path, changed, self.experiment)
+
+    def test_gate_rules(self):
+        entries = protocol.inventory(self.config, 'gate_putn')
+        good = [dict(trial_id=e['trial_id'], method=e['method'], success=True, correctness_errors=[],
+                     iterations=9000 if self.config['methods'][e['method']]['kind'] != 'rp_bit' else None, solve_time_s=4.)
+                for e in entries]
+
+        def verdict(rows):
+            with tempfile.TemporaryDirectory() as folder:
+                directory = Path(folder) / 'gate_putn'
+                directory.mkdir()
+                manifest = dict(entries=entries, sessions=[dict(collection_status='COMPLETE')], config_sha256='c', binary_sha256='b')
+                (directory / 'manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+                summary = dict(planned=len(entries), validated=len(rows), success=sum(r['success'] for r in rows),
+                               correctness_failures=sum(bool(r['correctness_errors']) for r in rows), rows=rows)
+                (directory / 'summary_full.json').write_text(json.dumps(summary), encoding='utf-8')
+                return bootstrap.gate_verdict(directory, self.config, 'gate_putn')
+        self.assertTrue(verdict(good)['passed'])
+        # A PUTN planner failure is a result; a PUTN correctness error or an A4 failure stops the run.
+        for method, change, passed in (('putn_source', dict(success=False), True),
+                                       ('putn_slope35', dict(correctness_errors=['putn_convergence_inconsistent']), False),
+                                       ('a4_rpbit_l33_m20', dict(success=False), False)):
+            rows = copy.deepcopy(good)
+            next(r for r in rows if r['method'] == method).update(change)
+            self.assertEqual(verdict(rows)['passed'], passed, (method, change))
 
 
 if __name__ == '__main__':

@@ -24,6 +24,7 @@ WINDOWS_BINARIES = ('build-a4-rpbit/terrain_benchmark.exe', 'build-a4-rpbit/libt
 UV_WHEEL_SHA256 = '8cf6bc2482d1293cc630f66b862b494c09acda9b7faff7307ef52667a2b3ad49'
 FAIRTIME_REGISTRATION = 'logs/a4_rpbit_fairtime_20261117/registration.json'
 SELFSTOP_REGISTRATION = 'logs/a4_rpbit_selfstop_20261117/registration.json'
+PUTN_REGISTRATION = 'logs/a4_rpbit_putn_20261119/registration.json'
 
 
 def code_cell(source):
@@ -234,6 +235,41 @@ Nếu trạng thái là `PAUSED_TIME`: mở phiên mới, thêm toàn bộ Outpu
 đầu không bao giờ chạy lại. SEM-RRT* là bản tái dựng của dự án, không phải mã của tác giả.
 '''
 
+PUTN_INTRO = '''# A4 / RP-BIT* so với SEM-RRT* bản C++ và PUTN — trần 10 s, trên Kaggle
+
+Notebook build lại A4, bản C++ của SEM-RRT* và bản port tĩnh của PUTN trên Linux, chạy các cổng kiểm tra trên đầu vào
+**không** thuộc held-out, rồi mới chạy thí nghiệm đã đăng ký trong `logs/a4_rpbit_putn_20261119/registration.json`:
+5 họ × seed bản đồ 101001–101010 × planner seed 1016001–1016005 × 4 phương pháp = **1 000 lượt**.
+
+- A4 là cấu hình chính đã khóa (λ = 33, M = 20), tự dừng khi hội tụ.
+- SEM-RRT* chạy bằng bản C++ và tự dừng theo luật của A4 (chi phí không giảm ít nhất 0,1% qua 4 000 vòng lặp).
+- PUTN có hai nhánh, cùng luật dừng đó: `putn_slope35` (trần dốc của τ = 35°) và `putn_source` (tham số gốc).
+- Mọi phương pháp có trần **10 s**.
+- Thu thập chạy 1 làn trên CPU 0, mỗi lúc một lượt: một tiến trình, 1 thread. Các phương pháp không bao giờ chạy cùng
+  lúc. Validate (không đo giờ) chạy sau khi thu thập xong, trên 4 lõi.
+
+Thứ tự:
+1. Build, rồi chạy 34 nhóm CTest (31 nhóm như trước, thêm `putn_paper`, `putn_static`, `terrain_capi`).
+2. Chạy hai cổng `smoke_putn` và `gate_putn` (seed 51001).
+3. Kiểm tra SEM Python và C++ trùng từng bit trên 5 map của cổng (7 425 vòng, 2 seed).
+4. Chạy held-out theo từng đoạn khoảng 1 giờ, mỗi đoạn có checkpoint.
+5. Validate nghiêm ngặt A4, rồi viết báo cáo.
+
+Nếu một cổng không đạt, notebook dừng trước held-out.
+
+Cách chạy:
+1. Upload file `.b64` thành một Kaggle Dataset riêng tư rồi **Add Input** vào notebook này.
+2. Settings: **Accelerator = None**, **Internet = On**. Chạy **Save Version → Save & Run All (Commit)**.
+3. Kết quả nằm trong `/kaggle/working/a4_rpbit/`:
+   - `bootstrap_status.json` và `reports/heldout_putn/REPORT.md`;
+   - `results_light.tar.gz`: nhỏ, đủ để phân tích;
+   - `campaign.tar.gz` và `linux_runtime.tar`: lớn, để kiểm toán và chạy tiếp.
+
+Nếu trạng thái là `PAUSED_TIME`: mở phiên mới, thêm toàn bộ Output của phiên trước làm Input, rồi đặt
+`PREVIOUS_OUTPUT` ở ô cấu hình thành thư mục chứa `campaign.tar.gz` và `linux_runtime.tar`. Lượt đã bắt
+đầu không bao giờ chạy lại. SEM-RRT* và PUTN là bản tái dựng của dự án, không phải mã của tác giả.
+'''
+
 # One delivery per registered Kaggle run; 'heldout' is the spent 2026-11-16 delivery, kept reproducible.
 PROFILES = dict(
     heldout=dict(delivery=DELIVERY, payload=PAYLOAD, notebook=NOTEBOOK, config=protocol.KAGGLE_CONFIG,
@@ -254,7 +290,17 @@ PROFILES = dict(
                   phases=('smoke_selfstop', 'gate_selfstop', 'heldout_selfstop'),
                   # The fairtime registration rides along: the bundle tests also check that controller entry.
                   extra_files=(SELFSTOP_REGISTRATION, FAIRTIME_REGISTRATION,
-                               'logs/sem_cpp_20261117/dev_equivalence/summary.json')))
+                               'logs/sem_cpp_20261117/dev_equivalence/summary.json')),
+    putn=dict(delivery='a4_rpbit_putn_kaggle_r1', payload='a4_rpbit_putn_source',
+              notebook='a4_rpbit_putn_kaggle.ipynb', config=protocol.PUTN_KAGGLE_CONFIG,
+              module='kaggle_a4_rpbit.putn', heldout='heldout_putn', seeds='101001-101010', intro=PUTN_INTRO,
+              # terrain_benchmark.cpp: the 2 dispatch lines of the rpRefine replay worker (factorial, 2026-11-17).
+              changed_after_lock=CHANGED_AFTER_LOCK + ('CMakeLists.txt', 'tools/rp_bit_validation.py',
+                                                       'apps/terrain_benchmark.cpp'),
+              phases=('smoke_putn', 'gate_putn', 'heldout_putn'),
+              # Earlier registrations ride along: the bundle tests also check those controller entries.
+              extra_files=(PUTN_REGISTRATION, SELFSTOP_REGISTRATION, FAIRTIME_REGISTRATION,
+                           'logs/sem_cpp_20261117/dev_equivalence/summary.json')))
 
 
 def create_notebook(payload_name, payload_sha256, profile=PROFILES['heldout']):

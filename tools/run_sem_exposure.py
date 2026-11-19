@@ -28,8 +28,10 @@ ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "configs/a3t_sem_exposure_v1.json"
 
 
-def _collect_trial(task, *, request_builder=None):
-    """One fresh spawn process; own field build and one actual planner process."""
+def _collect_trial(task, *, request_builder=None, is_native=None):
+    """One fresh spawn process; own field build and one actual planner process.
+
+    `is_native(entry)` selects the trials run by the native worker (default: the method `sem_native`)."""
     import psutil
     import sem_exposure_protocol as protocol
     from safe_length_field import build_field_file
@@ -49,7 +51,7 @@ def _collect_trial(task, *, request_builder=None):
         _verify_inputs(info)
         if file_hash(task["worker"]) != task["binary_sha256"]:
             raise ValueError("frozen worker changed")
-        native = entry["method"] == "sem_native"
+        native = is_native(entry) if is_native else entry["method"] == "sem_native"
         metadata = None
         field_path = directory / "planner_sem_field.txt"
         if native:

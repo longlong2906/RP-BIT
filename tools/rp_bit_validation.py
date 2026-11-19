@@ -13,6 +13,7 @@ from pathlib import Path
 from corridor_v3_validation import risk_metrics
 from corridor_v4_execution import file_hash, read
 from pri_portfolio_validation import sharp_turns
+from rp_bit_protocol import NATIVE_KINDS, PUTN
 from run_safe_length import _csv_path, _events
 from sem_exposure_validation import objective_metrics, validate_geometry
 
@@ -176,7 +177,7 @@ def _replay_summary(worker):
 
 
 def _strict(kind, directory, request, info, execution, oracle, field):
-    if kind == "sem_native":
+    if kind in NATIVE_KINDS:
         from pri_portfolio_validation import validate_trial as strict
     else:
         from sem_exposure_validation import validate_trial as strict
@@ -198,8 +199,19 @@ def validate_trial(directory, entry, info, config, *, oracle, field, full=False)
         return row
     request, worker = read(directory / "request.json"), read(directory / "worker.json")
     kind = config["methods"][entry["method"]]["kind"]
-    native = kind == "sem_native"
-    if native:
+    native = kind in NATIVE_KINDS
+    if kind == PUTN:
+        # The registered PUTN convergence stop and tau slope cap must be the ones that ran.
+        method = config["methods"][entry["method"]]
+        rule, outcome = method.get("convergence_stop"), worker.get("putn_convergence")
+        if rule != (outcome or {}).get("rule") or rule != request.get("putn_convergence_stop"):
+            errors.append("putn_convergence_stop_mismatch")
+        elif rule and outcome["converged"] and not _convergence_consistent(rule, outcome, worker):
+            errors.append("putn_convergence_inconsistent")
+        cap = method.get("tau_slope_cap_deg")
+        if cap != request.get("putn_tau_slope_cap_deg") or cap != (worker.get("native_model") or {}).get("tau_slope_cap_deg"):
+            errors.append("putn_tau_slope_cap_mismatch")
+    if kind == "sem_native":
         # The registered SEM search engine must be the one that ran (C++ port: also the exact library).
         engine, ran = config["methods"][entry["method"]].get("engine", "python"), worker.get("provenance", {})
         if ran.get("sem_engine", "python") != engine or (

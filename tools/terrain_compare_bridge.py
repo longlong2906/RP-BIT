@@ -136,7 +136,9 @@ class TerrainBridge:
 class PutnBridge:
     """Separate model construction and solve so cold start stays measurable."""
 
-    def __init__(self, terrain, *, paper=False, points=None):
+    def __init__(self, terrain, *, paper=False, points=None, tau_slope_cap_deg=None):
+        """tau_slope_cap_deg (paper policy only): the slope term of tau is slope_deg / cap; None keeps the
+        source weight 0.1 (= cap 10). The A4 comparison declares 35, its protocol slope cap."""
         self.terrain = terrain
         lib, d = terrain.lib, C.c_double
         lib.tc_putn_create.argtypes, lib.tc_putn_create.restype = [C.c_void_p], C.c_void_p
@@ -162,7 +164,17 @@ class PutnBridge:
             lib.tc_putn_paper_stats.restype = C.c_int
             lib.tc_putn_snapshot_features.argtypes = [C.c_void_p, C.POINTER(d), C.c_size_t]
             lib.tc_putn_snapshot_features.restype = C.c_int
-            self.handle = lib.tc_putn_create_paper(terrain.handle, cloud.ctypes.data_as(C.POINTER(d)), len(cloud))
+            if tau_slope_cap_deg is None:
+                self.handle = lib.tc_putn_create_paper(terrain.handle, cloud.ctypes.data_as(C.POINTER(d)), len(cloud))
+            else:
+                cap = tau_slope_cap_deg
+                if type(cap) is not float or not math.isfinite(cap) or not 0 < cap <= 90:
+                    raise ValueError("PUTN tau slope cap must be a float in (0, 90] degrees")
+                # Declared lazily: older bridge libraries without this symbol still serve the other calls.
+                lib.tc_putn_create_paper_slope.argtypes = [C.c_void_p, C.POINTER(d), C.c_size_t, d]
+                lib.tc_putn_create_paper_slope.restype = C.c_void_p
+                self.handle = lib.tc_putn_create_paper_slope(terrain.handle, cloud.ctypes.data_as(C.POINTER(d)),
+                                                             len(cloud), cap)
             self.metadata.update(master_cloud_observations=len(cloud), voxel_resolution_m=.1,
                 fit_cube_side_m=1., com_height_m=.7, step_size_m=.4, neighbor_radius_m=1.,
                 goal_threshold_m=1., goal_bias=.15, native_cost="paper_eq1_com_traversability_minus2",
@@ -174,7 +186,12 @@ class PutnBridge:
                 informed_sampling="uniform_xy_rejection_by_sum_com_distance_lt_native_best",
                 informed_bound_roundoff_guard="1e-12*(1+native_best)",
                 projection="canonical_exact_H_support_xy", body_samples=21, body_grid=[5, 5])
+            if tau_slope_cap_deg is not None:
+                self.metadata.update(tau_slope_cap_deg=tau_slope_cap_deg, tau_effective_coefficients=dict(
+                    self.metadata["tau_effective_coefficients"], slope_deg=1. / tau_slope_cap_deg))
         else:
+            if tau_slope_cap_deg is not None:
+                raise ValueError("a tau slope cap is only supported by paper policy")
             if points is not None:
                 raise ValueError("master cloud is only supported by paper policy")
             self.handle = lib.tc_putn_create(terrain.handle)
@@ -203,6 +220,28 @@ class PutnBridge:
         if value == -1:
             raise BridgeError(self.terrain.error())
         return value
+
+    def set_convergence_stop(self, stop):
+        """None (off) or {"relative_eps", "window_iterations"}: the SEM-RRT* rule, for the following solves."""
+        lib = self.terrain.lib
+        lib.tc_putn_set_convergence_stop.argtypes = [C.c_void_p, C.c_double, C.c_uint64]
+        lib.tc_putn_set_convergence_stop.restype = C.c_int
+        eps, window = (stop["relative_eps"], stop["window_iterations"]) if stop else (0., 0)
+        if lib.tc_putn_set_convergence_stop(self.handle, eps, window) != 1:
+            raise BridgeError(self.terrain.error())
+
+    @property
+    def convergence(self):
+        """Outcome of the last solve's convergence stop, as SEMNativePlannerCpp.convergence."""
+        lib = self.terrain.lib
+        lib.tc_putn_convergence.argtypes = [C.c_void_p, C.POINTER(C.c_double)]
+        lib.tc_putn_convergence.restype = C.c_int
+        out = (C.c_double * 2)()
+        converged = lib.tc_putn_convergence(self.handle, out)
+        if converged not in (0, 1):
+            raise BridgeError(self.terrain.error())
+        return dict(converged=bool(converged), reference_cost=out[0] if math.isfinite(out[0]) else None,
+                    reference_iteration=int(out[1]))
 
     @property
     def statistics(self):

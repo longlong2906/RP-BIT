@@ -23,10 +23,17 @@ FAIRTIME_CONFIG = ROOT / "configs/a4_rpbitstar_v1_fairtime_kaggle.json"
 SELFSTOP_CONFIG = ROOT / "configs/a4_rpbitstar_v1_selfstop_kaggle.json"
 # Refine-attribution factorial (dev preview): planner {SEM-RRT*, plain BIT*, A4} x rpRefine {off, on}.
 FACTORIAL_DEV_CONFIG = ROOT / "configs/a4_rpbitstar_v1_refine_factorial_dev.json"
+# PUTN baseline (dev preview): source slope weight and the declared 35-degree tau slope cap, both self-stopping.
+PUTN_DEV_CONFIG = ROOT / "configs/a4_rpbitstar_v1_putn_dev.json"
+# PUTN held-out on Kaggle: the dev design (both PUTN arms, self-stop SEM-RRT*, locked A4) at 10 s, fresh seeds.
+PUTN_KAGGLE_CONFIG = ROOT / "configs/a4_rpbitstar_v1_putn_kaggle.json"
 NATIVE = "sem_native"
 # sem_refine: a derived trial that replays the finished SEM-RRT* trial of the same slot with A4's rpRefine.
 DERIVED = "sem_refine"
-KINDS = ("sem_native", "sem_exposure", "rp_bit", DERIVED)
+# putn_native: PUTN/PF-RRT* paper-first static port on its own objective, run by the native worker like SEM.
+PUTN = "putn_native"
+KINDS = ("sem_native", "sem_exposure", "rp_bit", DERIVED, PUTN)
+NATIVE_KINDS = ("sem_native", PUTN)
 DECISION_RULE = "refine_attribution_v1"
 FAMILIES = ("traversable_hill", "ridge_pass", "rolling_terrain", "narrow_passage", "mixed_obstacles")
 SMOKE_FAMILIES = ("flat", "tilted", "unsafe_short_safe_detour", "two_corridors_slope",
@@ -44,12 +51,17 @@ def load_config(path=CONFIG):
         # SEM search engine: the Python reconstruction (default) or its bit-identical C++ port.
         if method.get("engine", "python") not in ("python", "cpp") or ("engine" in method and method["kind"] != "sem_native"):
             raise ValueError("invalid SEM engine: " + name)
-        # Optional convergence stop of the C++ SEM search: {"relative_eps", "window_iterations"}.
+        # Optional convergence stop of the C++ SEM search or of PUTN: {"relative_eps", "window_iterations"}.
         if "convergence_stop" in method:
             from sem_native_cpp import check_convergence_stop
-            if method.get("engine") != "cpp" or method["convergence_stop"] is None:
+            if (method["kind"] != PUTN and method.get("engine") != "cpp") or method["convergence_stop"] is None:
                 raise ValueError("convergence stop needs the C++ SEM engine: " + name)
             check_convergence_stop(method["convergence_stop"])
+        if method["kind"] == PUTN:
+            cap = method.get("tau_slope_cap_deg")
+            if (set(method) - {"kind", "convergence_stop", "tau_slope_cap_deg"} or ("tau_slope_cap_deg" in method
+                    and (type(cap) is not float or not math.isfinite(cap) or not 0 < cap <= 90))):
+                raise ValueError("invalid PUTN method: " + name)
         if method["kind"] == DERIVED:
             times = method.get("refine_at_s")
             if (set(method) != {"kind", "source", "lambda", "refine_at_s"} or method["source"] != NATIVE
@@ -59,6 +71,11 @@ def load_config(path=CONFIG):
                     or any(type(t) is not float or not math.isfinite(t) or t <= 0 for t in times)
                     or any(b <= a for a, b in zip(times, times[1:]))):
                 raise ValueError("invalid derived method: " + name)
+    # Optional validation lanes: validation is not timed, so it may use more cores than the timed collection.
+    lanes = config["execution"].get("validation_cores")
+    if lanes is not None and (type(lanes) is not list or not lanes or len(set(lanes)) != len(lanes)
+                              or any(type(core) is not int or core < 0 for core in lanes)):
+        raise ValueError("invalid validation cores")
     for name, phase in config["phases"].items():
         if phase["maps"] not in ("smoke", "dev", "generate") or set(phase["methods"]) - set(config["methods"]):
             raise ValueError("invalid phase definition: " + name)
@@ -138,6 +155,18 @@ def request_for(entry, info, config, phase=None, field_path=None, field_metadata
             request.update(sem_engine="cpp", sem_library=str(library), sem_library_sha256=file_hash(library))
         if "convergence_stop" in method:
             request["sem_convergence_stop"] = dict(method["convergence_stop"])
+        return request
+    if method["kind"] == PUTN:
+        # Same native request shape, master cloud and budget as SEM-RRT*; no SEM-only clock policy.
+        from native_paper_v3_protocol import request_for as native_request, default_config as native_config
+        request = native_request("putn", dict(start=info["start"], goal=info["goal"]), info["map_path"],
+            info["cloud_path"], info["cloud_sha256"], entry["planner_seed"], budget, native_config())
+        request.update(map_sha256=info["map_sha256"], bridge_library=str(Path(bridge).resolve()),
+            library_search_paths=[str(Path(bridge).resolve().parent), "C:/mingw64/bin"], variant_id=entry["method"])
+        if "convergence_stop" in method:
+            request["putn_convergence_stop"] = dict(method["convergence_stop"])
+        if "tau_slope_cap_deg" in method:
+            request["putn_tau_slope_cap_deg"] = method["tau_slope_cap_deg"]
         return request
     from run_safe_length import request_for as safe_request
     request = safe_request("atlas_adaptive100_200", info, dict(planning_budget_s=budget,

@@ -494,8 +494,17 @@ def markdown_contrasts(report, fmt, pct, bound, mark):
             lines.append(f"| {contrast['method']} | {contrast['baseline']} | " + " | ".join(mark(row[key]) for key in (
                 "psr_pooled", "psr_every_family", "sti_lower", "time_lower", "j_sem_mean_lower", "j_sem_upper95_below_zero",
                 "apl_noninferior", "pri_noninferior")) + " |")
-    decision = report.get("decision")
-    lines += ["", "## 8. Quyết định đã đăng ký (luật `refine_attribution_v1`)", ""]
+    # Sections 8-9 belong to configs that register a decision rule / derived replay trials (the factorial);
+    # a contrast-only config (e.g. the PUTN dev preview) has neither, so they are left out.
+    if report["analysis"].get("decision") or report.get("decision"):
+        lines += _decision_lines(report.get("decision"), fmt, pct, mark)
+    if any(spec.get("kind") == "sem_refine" for spec in report["methods"].values()):
+        lines += _replay_lines(report, fmt)
+    return lines
+
+
+def _decision_lines(decision, fmt, pct, mark):
+    lines = ["", "## 8. Quyết định đã đăng ký (luật `refine_attribution_v1`)", ""]
     if decision:
         meaning = {"A": "A — planner của A4 đóng góp chất lượng: J₃₀ thấp hơn có ý nghĩa ngay cả khi đối chứng cũng có rpRefine",
                    "B": "B — không thấp hơn về J₃₀ nhưng nhanh hơn có ý nghĩa và J₃₀ không kém quá 1%",
@@ -512,7 +521,11 @@ def markdown_contrasts(report, fmt, pct, bound, mark):
                   "- A được xét trước B, nên xác suất kết luận sai A hoặc B tối đa là 2α; đây là quyết định hướng bài, không phải claim."]
     else:
         lines.append("Không tính được (thiếu tương phản hoặc không có cặp an toàn).")
-    lines += ["", "## 9. Replay SEM-RRT* + rpRefine", ""]
+    return lines
+
+
+def _replay_lines(report, fmt):
+    lines = ["", "## 9. Replay SEM-RRT* + rpRefine", ""]
     for name, row in (report.get("replay") or {}).items():
         lines.append(f"- `{name}` ({row['trials']} lượt): {row['refinements']} lần refine, công bố {row['refine_published']}, "
                      f"không hạ được J đã công bố {row['refine_not_improving']}, không hợp lệ/không an toàn {row['refine_rejected']}; "

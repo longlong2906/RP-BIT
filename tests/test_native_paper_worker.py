@@ -15,6 +15,34 @@ sys.path.insert(0, str(ROOT/'tools'))
 import native_paper_worker as worker
 
 
+class PutnA4OptionsTests(unittest.TestCase):
+    """A4 PUTN options (tau slope cap, convergence stop) only for the PUTN backend, in registered form."""
+
+    def request(self, **extra):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        cloud = Path(folder.name)/'cloud.npy'
+        np.save(cloud, np.zeros((2, 3)), allow_pickle=False)
+        request = dict(backend='putn', track='native', planner_id='putn_native_paper_v2',
+                       native_objective_id=worker.OBJECTIVES['putn'], map_path='unused.t25d', cloud_path=str(cloud),
+                       cloud_sha256=worker.file_hash(cloud), start=[1., 1.], goal=[2., 2.], planner_seed=1,
+                       planning_budget_s=5., bridge_library='unused.dll', representation_config={})
+        request.update(extra)
+        return request
+
+    def test_registered_putn_options(self):
+        stop = dict(relative_eps=1e-3, window_iterations=4000)
+        worker.validate_request(self.request())
+        worker.validate_request(self.request(putn_tau_slope_cap_deg=35., putn_convergence_stop=stop))
+        sem = dict(backend='sem', planner_id='sem_native_paper_v2', native_objective_id=worker.OBJECTIVES['sem'])
+        for extra in (dict(putn_tau_slope_cap_deg=35), dict(putn_tau_slope_cap_deg=0.), dict(putn_tau_slope_cap_deg=90.5),
+                      dict(putn_convergence_stop=None), dict(putn_convergence_stop=dict(stop, relative_eps=1.)),
+                      dict(putn_convergence_stop=dict(stop, extra=1)), dict(sem, putn_tau_slope_cap_deg=35.),
+                      dict(sem, putn_convergence_stop=stop), dict(sem_convergence_stop=stop)):
+            with self.assertRaises(ValueError, msg=str(extra)):
+                worker.validate_request(self.request(**extra))
+
+
 class NativeWorkerTests(unittest.TestCase):
     def setUp(self):
         parent = ROOT/'tests/fixtures/native_paper'

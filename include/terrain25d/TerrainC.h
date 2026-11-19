@@ -26,6 +26,14 @@ TC_API int tc_timings(void *terrain, double out3[3]);
 /* Model conversion/voxel creation occurs here, before the solve timer. */
 TC_API void *tc_putn_create(void *terrain);
 TC_API void *tc_putn_create_paper(void *terrain, const double *cloud_xyz, size_t point_count);
+/* As tc_putn_create_paper; the slope term of tau is slope_deg / tau_slope_cap_deg (10 = source weight 0.1). */
+TC_API void *tc_putn_create_paper_slope(void *terrain, const double *cloud_xyz, size_t point_count,
+                                        double tau_slope_cap_deg);
+/* Optional convergence stop for the following solves; window 0 turns it off (default). Returns 1. */
+TC_API int tc_putn_set_convergence_stop(void *planner, double relative_eps, uint64_t window_iterations);
+/* Last solve: returns 1 if it stopped on convergence, 0 otherwise, -1 error. out2 = reference cost
+   (NaN before the first solution) and the iteration count at the last reference reset. */
+TC_API int tc_putn_convergence(void *planner, double out2[2]);
 /* Snapshot rows: COMxyz,normalxyz,tau,flatness,slope_deg,sparsity,point_count. */
 TC_API int tc_putn_snapshot_features(void *planner, double *out, size_t row_capacity);
 TC_API int tc_putn_fit_plane(void *planner, double x, double y, double out12[12]);

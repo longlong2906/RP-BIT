@@ -534,6 +534,222 @@ Kế hoạch: `C:\Users\Long\.claude\plans\parallel-questing-lemon.md`. Người
     - Đường cuối của cả 75 lượt là đường đã refine.
     - Overhead trung bình 0.176 s, lớn nhất 0.398 s.
 
+### 6.10 PUTN làm baseline thứ hai (xem trước trên dev 5 s, 19/11/2026)
+
+**Câu hỏi.** Đưa PUTN/PF-RRT* (bản port tĩnh bám bài báo, `patches/putn-static-adaptation.md`) vào cùng benchmark với
+A4 và SEM-RRT*, có so Time. Người dùng chọn hai nhánh PUTN (tham số gốc và trần dốc 35°) và dev 5 s mỗi lượt.
+
+- **Vì sao có nhánh trần dốc.** Trong bản paper, τ = 1000·flatness + 0,1·slope(°) + sparsity và mặt phẳng có τ ≥ 1
+  bị loại, nên tham số gốc cấm mọi chỗ dốc từ khoảng 10°, trong khi miền an toàn A4 cho tới 35°. Bằng chứng trước khi chạy:
+  - native-paper v3 (20 s, cùng 5 họ): PUTN `ridge_pass` 0/200 (180 timeout, 20 endpoint bị loại);
+  - dọc đường an toàn của SEM trên 3 map `ridge_pass` dev: 36–67% điểm bị loại vì τ ≥ 1, ở dốc 10,1–24,2°;
+  - PUTN 20 s trên `ridge_pass_41001`: TIMEOUT, 74% mẫu bị mô hình loại.
+- **Bốn nhánh** (`configs/a4_rpbitstar_v1_putn_dev.json`; map dev đã thấy 41001–41003 × seed 416001–416005,
+  75 slot × 4 = 300 lượt, **5 s**, checkpoint 0,5/1/2/5 s):
+
+  | Nhánh | Nội dung |
+  |---|---|
+  | `sem_native` | SEM-RRT* C++, tự dừng như 6.8 |
+  | `a4_rpbit_l33_m20` | cấu hình chính đã khóa |
+  | `putn_slope35` | PUTN paper, trần dốc của τ = 35° (đúng trần dốc của protocol; khai báo, không dò trên dữ liệu) |
+  | `putn_source` | PUTN paper, tham số gốc `map1.yaml` (tương đương trần 10°) |
+
+  Hai nhánh PUTN tự dừng theo đúng luật của SEM (ε = 10⁻³ tương đối, cửa sổ 4 000 vòng lặp). PUTN giữ objective và cơ
+  chế an toàn native; validator chung chấm PSR như với SEM. Dựng voxel từ point cloud là tiền xử lý, ngoài đồng hồ
+  solve, như raster của SEM.
+- **Mã** (build `build-a4-putn`; binary đã khóa ở `build-a4-rpbit` không đổi):
+  - `src/PutnStatic.cpp`, `PutnStatic.hpp`: tham số `tau_slope_cap_deg` (mặc định 10 = hệ số gốc 0,1, đúng từng bit) và
+    `setConvergenceStop` (luật của SEM, tắt mặc định).
+  - `src/TerrainC.cpp`, `TerrainC.h`: thêm `tc_putn_create_paper_slope`, `tc_putn_set_convergence_stop`,
+    `tc_putn_convergence`; hàm cũ giữ nguyên.
+  - `tools/terrain_compare_bridge.py`, `tools/native_paper_worker.py`: truyền hai tùy chọn; worker ghi `putn_convergence`,
+    `termination_reason` và `counters.iterations`.
+  - `tools/rp_bit_protocol.py`: kind `putn_native`. `tools/run_rp_bit.py` + `tools/run_sem_exposure.py`: trial PUTN chạy
+    bằng worker native. `tools/rp_bit_validation.py`: lỗi `putn_convergence_stop_mismatch`, `putn_convergence_inconsistent`,
+    `putn_tau_slope_cap_mismatch`. `tools/analyze_rp_bit.py`: mục 8–9 chỉ in khi config có luật quyết định / replay.
+- **Kiểm tra trước khi chạy dev:**
+  - test C++ `putn_paper` (thêm: trần 10° trùng bản gốc từng bit, trần 35° nhận mặt dốc 16,7°, điểm dừng và tính tiền tố
+    của luật dừng) và `putn_static` đạt;
+  - fingerprint fixed-work (3 map dev, chế độ paper và static, 4 000 vòng lặp) của DLL mới với tham số mặc định trùng DLL
+    đã khóa;
+  - 11 test CTest tích hợp (gồm `sem_native_cpp`, `rp_bit_worker`, `terrain_capi`) và 39 test Python đạt;
+  - báo cáo factorial dev dựng lại trùng từng byte; 2 verdict `dev_selfstop` chấm lại trùng.
+- **Smoke** (`results/a4_rpbit_putn_smoke_20261119/smoke_putn`, 28 lượt, 2 s): 0 lỗi correctness, 24/28 đạt. Lượt hỏng:
+  `putn_source` trên `tilted` (endpoint bị loại vì dốc > 10°) và cả ba planner native trên `nodata_thin_obstacle`
+  (`missing_sem_support`, lỗi đã biết).
+- **Kết quả dev** (`results/a4_rpbit_putn_dev_20261119/dev_putn`; báo cáo `reports/a4_rpbit_putn_dev_20261119/`,
+  `report.json` sha `95d67b58…`, `REPORT.md` sha `4a970698…`; map đã thấy, **không phải bằng chứng tổng quát hóa**):
+  - **Thu thập:** 300/300 verdict, 0 lỗi correctness.
+  - **Bảng gộp (75 lượt mỗi nhánh; metric tính trên các lượt an toàn của chính nhánh đó):**
+
+    | Nhánh | PSR | APL (m) | PRI | STI (1/m) | Time (s) | J₃₀ |
+    |---|---:|---:|---:|---:|---:|---:|
+    | `sem_native` | 100% | 36.556 | 3.955 | 0.0755 | 2.47 | 152.34 |
+    | `a4_rpbit_l33_m20` | 100% | 36.315 | 3.943 | 0.000367 | 1.47 | 151.36 |
+    | `putn_slope35` | 76% | 35.089 | 6.482 | 0.0405 | 4.98 | 213.18 |
+    | `putn_source` | 64% | 35.290 | 4.435 | 0.165 | 4.81 | 155.52 |
+
+    J₃₀ của `putn_source` thấp chỉ vì nó giải được các map dễ; xem so ghép cặp.
+  - **Theo họ (lượt an toàn / 15):**
+
+    | Họ | `putn_slope35` | `putn_source` |
+    |---|---:|---:|
+    | traversable_hill | 15 | 15 |
+    | ridge_pass | 12 (3 risk > 40) | 0 (15 timeout) |
+    | rolling_terrain | 15 | 10 (5 endpoint bị loại) |
+    | narrow_passage | 15 | 15 |
+    | mixed_obstacles | **0** (15 `missing_sem_support`) | 8 (7 `missing_sem_support`) |
+
+  - **So ghép cặp, nhánh − SEM** (cận trên một phía 95%):
+    - `putn_slope35` (57 cặp): APL −4,18% [−2,56%], PRI +66% [+108%], ΔJ₃₀ +61,8 [+75,5], ΔTime +2,70 s.
+    - `putn_source` (48 cặp): APL −0,40% [+0,84%], PRI +73% [+130%], ΔJ₃₀ +51,0 [+68,7], ΔTime +2,51 s.
+  - **Tương phản A4 − PUTN:**
+    - với `putn_slope35` (57 cặp): APL +3,42% [+5,34%] (A4 dài hơn), PRI −39,8% [−30,4%], ΔJ₃₀ −62,8 [−50,0],
+      ΔTime −3,53 s [−3,38 s];
+    - với `putn_source` (48 cặp): APL −0,48% [+1,55%], PRI −42,1% [−28,8%], ΔJ₃₀ −51,7 [−35,6], ΔTime −3,35 s [−3,13 s].
+  - **Đọc kết quả:**
+    - Trần 35° sửa đúng lỗi đã chẩn đoán: `ridge_pass` 0 → 12/15, `rolling_terrain` 10 → 15/15.
+    - Nhưng ở `mixed_obstacles`, trần 35° làm PSR 8 → 0/15. Khoảng cách nhỏ nhất từ đường cuối tới vật cản (trung vị):
+      SEM 1,04 m, A4 1,06 m, `putn_source` 0,68 m, `putn_slope35` 0,58 m (nhỏ nhất 0,435 m). Đường vẫn hợp lệ hình
+      học (footprint 0,3 + 0,1 m), nhưng trường SEM không có support trong khoảng ~1 m quanh vật cản. Dốc ≥ 10° quanh
+      chân tường từng là "khoảng cách an toàn ngầm" của tham số gốc.
+    - PUTN không biết trường rủi ro SEM nên đường ngắn hơn nhưng rủi ro cao hơn nhiều; J₃₀ thua xa.
+    - PUTN gần như không tự dừng trong 5 s (74/75 và 64/75 lượt chạm trần): trong 4 000 vòng lặp cuối nó vẫn còn cải
+      thiện ít nhất 0,1%. Vì vậy Time của PUTN ≈ trần, và chất lượng của nó ở 5 s chưa phải hội tụ.
+  - **Held-out:** đã đăng ký ngày 19/11/2026 cho Kaggle, trần 10 s; xem 6.11. Kết quả ở 6.12.
+
+### 6.11 Held-out PUTN trên Kaggle, trần 10 s (đã đăng ký 19/11/2026; đã chạy cùng ngày, kết quả ở 6.12)
+
+**Quyết định của người dùng (19/11/2026).** Chạy held-out trên Kaggle để so A4, SEM-RRT* và PUTN, mỗi lượt 10 s. Trong
+hộp thoại, người dùng chọn:
+- giữ cả hai nhánh PUTN của dev (`putn_slope35`, `putn_source`);
+- A4 so với SEM-RRT* chấm bằng 10 tiêu chí mục 5.3; A4 so với **từng** nhánh PUTN cũng chấm bằng đúng 10 tiêu chí đó.
+  Mọi kết quả đều báo cáo, không có một kết luận đạt/trượt chung.
+
+**Thiết kế** (`configs/a4_rpbitstar_v1_putn_kaggle.json`; biên bản `logs/a4_rpbit_putn_20261119/registration.json`):
+
+| Mục | Giá trị |
+|---|---|
+| Phương pháp | 4 nhánh của 6.10, không đổi tham số nào |
+| Trần | 10 s cho mọi phương pháp; A4, SEM và hai nhánh PUTN đều tự dừng khi hội tụ |
+| Held-out mới `heldout_putn` | 5 họ × seed bản đồ 101001–101010 × planner seed 1016001–1016005 = 250 cặp, 1 000 lượt |
+| Cổng | `smoke_putn` (7 fixture, 2 s), `gate_putn` (seed 51001 × 516001, 10 s), trùng bit SEM Python/C++ |
+| Lõi | thu thập 1 làn trên CPU 0, mỗi lúc một lượt; validate trên 4 lõi sau khi thu thập xong |
+| Checkpoint anytime | 0,5 / 1 / 2 / 5 / 10 s |
+| Tương phản đăng ký | A4 − `putn_slope35`, A4 − `putn_source` (10 tiêu chí), `putn_slope35` − `putn_source` (mô tả) |
+
+- Seed 101001–101010 và 1016001–1016005 chưa từng xuất hiện trong config, công cụ, test, tài liệu, log, báo cáo hay
+  đường dẫn kết quả nào (tìm ngày 19/11/2026). Seed 91001/916001 vẫn để dành cho held-out factorial (6.9).
+- So với dev chỉ đổi: ngân sách 5 → 10 s, thêm checkpoint 10 s, seed, lõi 0, và khóa mới `execution.validation_cores`.
+- **Khóa `validation_cores` (mới, tùy chọn).** Validate không đo giờ và chỉ chạy khi thu thập của một pha đã xong, nên
+  có thể dùng nhiều lõi hơn phần thu thập mà không ảnh hưởng thời gian của lượt nào. Mã: `tools/rp_bit_protocol.py`
+  (kiểm tra danh sách lõi), `tools/run_rp_bit.py` (`validate` dùng `validation_cores` nếu có). Config cũ không có khóa
+  này nên chạy y như trước. Lý do: ước lượng từ held-out Kaggle 16/11 (validate 10–21 s mỗi lượt) cho thấy nếu
+  validate cũng chỉ 1 làn thì phiên khoảng 9 giờ, vượt trần 9 giờ của controller.
+- Controller: `kaggle_a4_rpbit/fairtime.py`, mục `EXPERIMENTS['putn']`; điểm vào `kaggle_a4_rpbit/putn.py`. CTest bắt
+  buộc: 31 nhóm của selfstop + `putn_paper`, `putn_static`, `terrain_capi` = 34. Controller kiểm `validation_cores` nằm
+  trong affinity trước khi chạy cổng.
+- Gói: `kaggle_a4_rpbit/package_notebook.py`, profile `putn`. `apps/terrain_benchmark.cpp` khác bản khóa (2 dòng
+  dispatch của worker replay factorial, 6.9) nên được ghi vào `changed_after_lock`.
+- **Kỳ vọng ghi trước khi chạy** (từ dev 5 s): A4 − SEM đạt 10/10; A4 − `putn_slope35` đạt 8/10 (trượt APL
+  non-inferiority và APL target); A4 − `putn_source` đạt 9/10 (trượt APL non-inferiority). PUTN dự kiến vẫn chạy gần
+  trần 10 s, và hỏng theo họ như dev (`putn_slope35` ở `mixed_obstacles`, `putn_source` ở `ridge_pass`).
+
+**Diễn tập trên Windows** (chỉ dùng đầu vào cổng, config Kaggle, build `build-a4-putn`;
+`results/a4_rpbit_putn_rehearsal_20261119`, log và verdict ở `logs/a4_rpbit_putn_20261119/`):
+- `smoke_putn` 28/28 verdict, 0 lỗi correctness, 24 lượt thành công, A4 7/7. Lượt hỏng giống smoke dev: `putn_source` trên
+  `tilted`; SEM và hai nhánh PUTN trên `nodata_thin_obstacle`.
+- `gate_putn` 20/20 verdict, 0 lỗi correctness, 17 lượt thành công, A4 5/5. Lượt hỏng: hai nhánh PUTN trên `ridge_pass`
+  và `putn_slope35` trên `mixed_obstacles`, đúng kiểu hỏng ở dev. Thời gian dừng trung bình: A4 1,69 s, SEM 4,14 s,
+  `putn_slope35` 7,55 s (3/5 lượt dừng do hội tụ), `putn_source` 9,23 s. Thu thập 192 s (9,6 s mỗi lượt), validate
+  đầy đủ trên 4 lõi 220 s.
+- Cả hai cổng đạt luật cổng của controller (`rehearsal_gate_verdicts.json`).
+- SEM Python và C++ trùng từng bit 10/10, chi phí cuối trùng lần diễn tập selfstop. Lần chạy đầu thiếu
+  `--search-paths` của MinGW nên không nạp được DLL (log `..._attempt1_no_search_paths.log`); trên Kaggle controller
+  luôn truyền đường dẫn này.
+- 34/34 nhóm CTest bắt buộc đạt trên Windows, không test nào bị skip (`ctest_34_before_packaging.log`).
+- Test Python: `tests/test_rp_bit_tooling.py` 38/38 (thêm `PutnKaggleConfigTests`), `kaggle_a4_rpbit.test_bundle`
+  17/17 (thêm `PutnControllerTests` và test notebook).
+- Gói giao: `dist/a4_rpbit_putn_kaggle_20261119/` (SHA payload ghi ở `docs/STATUS.md` và `delivery_manifest.json`).
+- Ước tính phiên Kaggle 7–8 giờ (build khoảng 1 giờ, thu thập khoảng 3–3,5 giờ vì PUTN thường chạy gần trần, validate
+  khoảng 2,5 giờ). Nếu quá trần 9 giờ của controller, phiên dừng ở `PAUSED_TIME` và chạy tiếp ở phiên sau.
+
+### 6.12 Kết quả held-out PUTN (Kaggle, 19/11/2026)
+
+**Lượt chạy và kiểm chứng.**
+- Kernel `notebook11a18abc92`, Xeon 2,2 GHz. Một phiên từ 05:25 đến 10:15 UTC, khoảng 4,9 giờ (ước tính trước 7–8 giờ),
+  không cần phiên thứ hai. Thu thập chia 3 đoạn một giờ trong cùng phiên; đoạn sau chỉ chạy các lượt chưa bắt đầu.
+- Cổng trên Linux: 34/34 nhóm CTest. `smoke_putn` thành công 24/28 và `gate_putn` 17/20, cả hai 0 lỗi correctness, các
+  lượt hỏng giống diễn tập Windows. SEM Python và C++ trùng từng bit 10/10.
+- Held-out: 1 000/1 000 lượt, mỗi lượt bắt đầu đúng một lần, tất cả trên CPU 0 và không lúc nào hai lượt chạy cùng nhau;
+  0 lỗi correctness. Validate nghiêm ngặt mọi snapshot của cấu hình chính: 250/250 đạt.
+- Biên bản thay đổi ghi lúc 05:59:52, trước lượt held-out đầu tiên (06:03:14). Hash của config, của biên bản đăng ký
+  (`c96a1a9e…`) và của binary Linux trùng nhau ở mọi chỗ ghi.
+- Báo cáo dựng lại trên máy cục bộ bằng `tools/analyze_rp_bit.py` trùng báo cáo Kaggle ở mọi khóa, chỉ khác đường dẫn
+  thư mục (`logs/a4_rpbit_putn_20261119/heldout_receipt.json`).
+- Báo cáo đầy đủ ở `reports/a4_rpbit_putn_kaggle_20261119/heldout_putn/REPORT.md` (`report.json` sha `ae64226e…`); verdict
+  ở `results/a4_rpbit_putn_kaggle_20261119/`. Kho trial thô 2,66 GB chỉ nằm trong
+  `C:\Users\Long\Downloads\notebook11a18abc92_output`.
+
+**Bảng gộp** (250 lượt mỗi nhánh; metric tính trên các lượt an toàn của chính nhánh đó, nên J₃₀ của PUTN không so trực
+tiếp được, vì PUTN hỏng đúng ở các họ khó):
+
+| Nhánh | PSR | APL (m) | PRI | STI (1/m) | Time (s) | Dừng do hội tụ | J₃₀ |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `sem_native` | 249/250 | 38,783 | 3,888 | 0,0751 | 4,41 | 228/250 | 159,37 |
+| **`a4_rpbit_l33_m20`** | 250/250 | 38,684 | 3,878 | 0,00362 | 2,96 | 250/250 | 158,47 |
+| `putn_slope35` | 190/250 | 35,030 | 5,916 | 0,0732 | 9,99 | 4/250 | 195,26 |
+| `putn_source` | 195/250 | 38,045 | 4,398 | 0,222 | 9,98 | 3/250 | 166,35 |
+
+**Theo họ** (lượt an toàn / 50):
+
+| Họ | SEM | A4 | `putn_slope35` | `putn_source` |
+|---|---:|---:|---:|---:|
+| traversable_hill | 50 | 50 | 50 | 50 |
+| ridge_pass | 50 | 50 | 28 (22 risk > 40) | 0 (45 timeout, 5 endpoint bị loại) |
+| rolling_terrain | 50 | 50 | 50 | 45 (5 endpoint bị loại) |
+| narrow_passage | 50 | 50 | 50 | 50 |
+| mixed_obstacles | 49 (1 `missing_sem_support`) | 50 | 12 (38 `missing_sem_support`) | 50 |
+
+**Ba so sánh đã đăng ký** (10 tiêu chí mục 5.3; chỉ các cặp mà cả hai đều có đường cuối an toàn; trong ngoặc là cận trên
+một phía 95%):
+
+| So sánh | Cặp | ΔAPL gộp | ΔPRI gộp | ΔJ₃₀ | ΔTime (s) | Đạt | Trượt |
+|---|---:|---:|---:|---:|---:|---:|---|
+| A4 − SEM | 249 | −0,20% [+0,47%] | −0,31% [+0,15%] | −0,858 [−0,694] | −1,45 [−1,06] | 10/10 | — |
+| A4 − `putn_slope35` | 190 | +5,03% [+8,28%] | −40,7% [−35,2%] | −55,6 [−48,9] | −7,25 [−7,03] | 8/10 | APL không kém 1%, APL mục tiêu |
+| A4 − `putn_source` | 195 | +0,94% [+4,49%] | −38,0% [−31,9%] | −48,2 [−40,8] | −6,97 [−6,71] | 8/10 | APL không kém 1%, APL mục tiêu |
+
+Tương phản mô tả `putn_slope35` − `putn_source` (157 cặp): APL −6,47%, PRI +18,2%, ΔJ₃₀ +9,75 [+17,7].
+
+**So với kỳ vọng ghi trước.**
+- A4 − SEM đạt 10/10 và A4 − `putn_slope35` đạt 8/10, đúng như kỳ vọng.
+- A4 − `putn_source` kém kỳ vọng một tiêu chí: đạt 8/10 thay vì 9/10, vì APL mục tiêu cũng trượt (gộp +0,94%; dev −0,48%).
+  Nguyên nhân là họ `mixed_obstacles`: ở 10 s, `putn_source` an toàn 50/50 (dev 5 s: 8/15) với đường ngắn hơn A4 11,4%.
+  Ở ba họ còn lại có cặp, A4 ngắn hơn 2,0–6,4%.
+- Hỏng theo họ đúng như dự kiến: `putn_source` hỏng mọi slot `ridge_pass`. `putn_slope35` hỏng 38/50 slot
+  `mixed_obstacles` (dev: 15/15) và còn hỏng thêm 22/50 slot `ridge_pass` vì risk > 40.
+- PUTN vẫn chạy gần trần: 246/250 và 237/250 lượt chạm 10 s.
+
+**Đọc kết quả.**
+- **A4 − SEM.** Đạt đủ 10 tiêu chí. Ưu thế rõ là J₃₀ (thấp hơn ở 247/249 cặp), STI, Time (nhanh hơn ở 169/249 cặp) và
+  PSR. APL và PRI chỉ "không kém", chưa thấp hơn có ý nghĩa thống kê: APL ngắn hơn ở 215/249 cặp nhưng dài hơn 0,87% ở
+  `mixed_obstacles`, còn PRI thấp hơn ở 136/249 cặp.
+- **Anytime.** J₃₀ của A4 thấp hơn SEM ở mọi checkpoint, kể cả 0,5 s (−0,43 [−0,22]). A4 đạt J₃₀ cuối của SEM ở 247/249
+  cặp, trung vị 0,26 s.
+- **A4 − PUTN.** A4 hơn rõ ở PSR (250 so với 190/195), PRI (−38 đến −41%), J₃₀, STI và Time. PUTN cho đường ngắn hơn vì
+  không biết trường rủi ro SEM, nên APL trượt như đã dự kiến.
+- **Lưu ý khi đọc:**
+  - So ghép cặp với PUTN chỉ dùng 190/195 slot mà PUTN an toàn, tức bỏ đi các họ PUTN hỏng.
+  - Tiêu chí Time so với PUTN gần như hiển nhiên, vì PUTN hầu như không tự dừng trước 10 s. Chất lượng PUTN ở đây là
+    chất lượng anytime tại 10 s, chưa phải hội tụ theo luật dừng.
+  - Với `putn_slope35`, chạy lâu hơn lại làm mất lượt an toàn: 22 slot `mixed_obstacles` có đường an toàn ở 2 s nhưng
+    tới 10 s thành `missing_sem_support` (số lượt an toàn tại T: 212 ở 1–2 s, 190 ở 10 s). Điều này khớp với dev, nơi
+    đường của nhánh này đi sát vật cản nhất.
+  - PUTN bị chấm bằng metric rủi ro SEM (PRI, J₃₀) mà nó không tối ưu. Đây là bản port tĩnh do dự án tự dựng, không
+    phải mã của tác giả (hạn chế đã đăng ký).
+- Held-out này đã dùng: không chạy lại, không thêm seed, không gộp với các held-out trước.
+
 ## 7. Hạn chế đã biết
 
 - Trên held-out, PRI chỉ thấp hơn SEM 0,13% và chưa tách khỏi 0 về thống kê. Lợi thế rõ và ổn định là Time,

@@ -43,9 +43,18 @@ field and collision index are built separately in `tc_create`. A positive
 `fixed_work` executes a fixed number of iterations for tests only; production
 adapters must pass zero to use the solve budget.
 
+A4 comparison options (2026-11-19, opt-in; defaults are unchanged bit for bit):
+
+| Option | Behavior |
+|---|---|
+| `tau_slope_cap_deg` (paper policy only; C ABI `tc_putn_create_paper_slope`) | The slope term of tau is `slope_deg / cap`. The source weight 0.1 per degree is cap 10 (IEEE `1./10. == .1`), so tau already reaches 1 at 10 degrees on slope alone and the paper policy rejects every plane from about 10 degrees, while the A4 safety domain admits 35. The A4 PUTN arm declares cap = 35, the protocol slope cap, not a value tuned on data; flatness, sparsity and all other source parameters stay fixed. The source arm keeps 10. |
+| Convergence stop (`setConvergenceStop`; C ABI `tc_putn_set_convergence_stop`, `tc_putn_convergence`) | The SEM-RRT* rule of the A4 self-stop comparison: at each iteration boundary after the first solution, a published cost below `reference * (1 - relative_eps)` becomes the reference; once `window_iterations` iterations pass without one, the search stops. It reads only the published cost, so a stopped search is an exact prefix of the unstopped search. Off by default. |
+
 Verification: C++ tests cover analytic planar common cost, active plane model,
 native cost, deterministic fixed-work paths/rewiring, thin obstacles, final
-connector, slope and NoData. Python C ABI tests use analytic length expectations
+connector, slope and NoData; the paper tests also cover cap 10 = source weight,
+a 16.7-degree plane admitted at cap 35, and the stop point and exact-prefix property
+of the convergence stop. Python C ABI tests use analytic length expectations
 and exact singleton XY. The campaign independent verifier remains required for
 all reported successes; these tests do not establish global optimality or robot
 execution safety.

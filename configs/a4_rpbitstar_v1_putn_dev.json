@@ -1,0 +1,46 @@
+{
+  "protocol_id": "a4_rpbitstar_v1",
+  "schema_version": 1,
+  "safety": {"risk_cap": 40.0, "slope_cap_deg": 35.0},
+  "execution": {
+    "cores": [2],
+    "process_watchdog_s": 600.0,
+    "reserve_bytes_per_worker": 419430400,
+    "retry_started_trials": false
+  },
+  "analysis": {
+    "baseline": "sem_native",
+    "checkpoints_s": [0.5, 1.0, 2.0, 5.0],
+    "sem_equivalent_lambda": 30.0,
+    "noninferiority_margin": 0.01,
+    "bootstrap_replicates": 20000,
+    "bootstrap_seed": 61016,
+    "contrasts": [
+      ["a4_rpbit_l33_m20", "putn_slope35"],
+      ["a4_rpbit_l33_m20", "putn_source"],
+      ["putn_slope35", "putn_source"]
+    ]
+  },
+  "methods": {
+    "sem_native": {"kind": "sem_native", "engine": "cpp",
+                   "convergence_stop": {"relative_eps": 0.001, "window_iterations": 4000}},
+    "a4_rpbit_l33_m20": {"kind": "rp_bit", "lambda": 33.0, "refine": true, "stop_batches": 20},
+    "putn_slope35": {"kind": "putn_native", "tau_slope_cap_deg": 35.0,
+                     "convergence_stop": {"relative_eps": 0.001, "window_iterations": 4000}},
+    "putn_source": {"kind": "putn_native",
+                    "convergence_stop": {"relative_eps": 0.001, "window_iterations": 4000}}
+  },
+  "phases": {
+    "smoke_putn": {
+      "maps": "smoke", "map_seeds": [101], "planner_seeds": [11], "planning_budget_s": 2.0,
+      "primary_method": "a4_rpbit_l33_m20",
+      "methods": ["sem_native", "a4_rpbit_l33_m20", "putn_slope35", "putn_source"]
+    },
+    "dev_putn": {
+      "maps": "dev", "map_seeds": [41001, 41002, 41003],
+      "planner_seeds": [416001, 416002, 416003, 416004, 416005], "planning_budget_s": 5.0,
+      "primary_method": "a4_rpbit_l33_m20",
+      "methods": ["sem_native", "a4_rpbit_l33_m20", "putn_slope35", "putn_source"]
+    }
+  }
+}

@@ -34,6 +34,9 @@ struct PutnStatic::Impl {
     PutnStats stats;
     PutnSnapshot last;
     bool paper=false;
+    double slope_weight=.1,stop_eps=0;  // tau slope coefficient per degree; convergence-stop epsilon
+    std::uint64_t stop_window=0;
+    PutnConvergence convergence;
     struct Node {PutnPlane plane;std::size_t parent=0;double cost=0,edge=0;std::vector<std::size_t> children;};
     std::vector<Node> tree;
     explicit Impl(const Terrain &t,const std::vector<Rect> &obstacles):terrain(t),bounds(t.bounds()) {
@@ -69,8 +72,12 @@ struct PutnStatic::Impl {
         for(const auto &p:cloud)setOccupied(p);
         stats.preprocessing_seconds=elapsed(model_began);
     }
-    Impl(const Terrain &t,const std::vector<Point3> &cloud,bool enabled):terrain(t),bounds(t.bounds()),paper(enabled) {
+    Impl(const Terrain &t,const std::vector<Point3> &cloud,bool enabled,double cap):terrain(t),bounds(t.bounds()),paper(enabled) {
         if(!paper||cloud.empty())throw std::invalid_argument("paper PUTN requires a nonempty master cloud");
+        if(!std::isfinite(cap)||cap<=0||cap>90)throw std::invalid_argument("PUTN tau slope cap must be in (0, 90] degrees");
+        // IEEE division is correctly rounded, so the source cap of 10 degrees gives exactly the source weight.
+        static_assert(1./10.==.1,"source slope weight must be reproduced exactly");
+        slope_weight=1./cap;
         auto began=Clock::now();double zmin=std::numeric_limits<double>::infinity(),zmax=-zmin;
         for(auto p:cloud){if(!std::isfinite(p.x)||!std::isfinite(p.y)||!std::isfinite(p.z))
                 throw std::invalid_argument("nonfinite master cloud");
@@ -142,7 +149,7 @@ struct PutnStatic::Impl {
         }
         result.available=true;result.normal=point(normal);result.center_of_mass=point(surface+com_height*normal);
         result.flatness=flatness;result.slope_deg=slope;result.sparsity=sparsity;
-        result.traversability=std::clamp(1000.*flatness+.1*slope+sparsity,0.,1.);
+        result.traversability=std::clamp(1000.*flatness+slope_weight*slope+sparsity,0.,1.);
         if(paper&&result.traversability>=1.){result.available=false;++stats.model_rejections;}
         return result;
     }
@@ -196,20 +203,27 @@ struct PutnStatic::Impl {
     }
 };
 PutnStatic::PutnStatic(const Terrain &t,const std::vector<Rect> &obs):impl_(new Impl(t,obs)){}
-PutnStatic::PutnStatic(const Terrain &t,const std::vector<Point3> &cloud,bool paper):impl_(new Impl(t,cloud,paper)){}
+PutnStatic::PutnStatic(const Terrain &t,const std::vector<Point3> &cloud,bool paper,double cap):impl_(new Impl(t,cloud,paper,cap)){}
 PutnStatic::~PutnStatic()=default;
 PutnPlane PutnStatic::fitPlane(Point p){return impl_->fit(p);}
 bool PutnStatic::nativeMotion(const PutnPlane &a,const PutnPlane &b)const{return impl_->native(a,b);}
 double PutnStatic::nativeCost(const PutnPlane &a,const PutnPlane &b)const{return impl_->nativeCost(a,b);}
 const PutnStats &PutnStatic::stats()const{return impl_->stats;}
 const PutnSnapshot &PutnStatic::lastSnapshot()const{return impl_->last;}
+void PutnStatic::setConvergenceStop(double relative_eps,std::uint64_t window_iterations){
+    if(window_iterations&&!(std::isfinite(relative_eps)&&relative_eps>0&&relative_eps<1))
+        throw std::invalid_argument("convergence stop needs 0 < relative_eps < 1");
+    impl_->stop_eps=window_iterations?relative_eps:0;
+    impl_->stop_window=window_iterations;
+}
+const PutnConvergence &PutnStatic::convergence()const{return impl_->convergence;}
 int PutnStatic::solve(Point start,Point goal,std::uint64_t seed,double budget,bool own,std::uint64_t work,
                       const std::function<void(const PutnSnapshot &)> &callback){
     if(!std::isfinite(budget)||budget<=0)throw std::invalid_argument("positive finite PUTN budget required");
     if(impl_->paper&&!own)throw std::invalid_argument("paper PUTN requires native objective");
     auto &m=*impl_;double prep=m.stats.preprocessing_seconds,conversion=m.stats.conversion_seconds;
     m.stats={};m.stats.preprocessing_seconds=prep;m.stats.conversion_seconds=conversion;
-    m.last={};m.tree.clear();auto began=Clock::now();
+    m.last={};m.tree.clear();m.convergence={};auto began=Clock::now();
     PutnPlane origin=m.fit(start),target=m.fit(goal);
     if(!origin.available||!target.available){m.stats.solve_seconds=elapsed(began);return -2;}
     m.tree.push_back({origin,0,0,0,{}});
@@ -240,6 +254,13 @@ int PutnStatic::solve(Point start,Point goal,std::uint64_t seed,double budget,bo
     std::mt19937_64 rng(seed);std::uniform_real_distribution<double> uniform(0.,1.);
     double focal=distanceXY(start,goal),ux=focal>0?(goal.x-start.x)/focal:1.,uy=focal>0?(goal.y-start.y)/focal:0.;
     while(work?m.stats.iterations<work:elapsed(began)<budget){
+        // Optional convergence stop, the SEM-RRT* rule; it reads only the published cost.
+        if(m.stop_window&&std::isfinite(best)){
+            auto &c=m.convergence;
+            if(!c.has_reference||best<c.reference_cost*(1.-m.stop_eps)){
+                c.has_reference=true;c.reference_cost=best;c.reference_iteration=m.stats.iterations;
+            }else if(m.stats.iterations-c.reference_iteration>=m.stop_window){c.converged=true;break;}
+        }
         ++m.stats.iterations;Point q;
         if(!own&&std::isfinite(best)&&best>focal){
             double angle=2*pi*uniform(rng),r=std::sqrt(uniform(rng));

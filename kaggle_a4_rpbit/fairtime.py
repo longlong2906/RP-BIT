@@ -4,7 +4,8 @@ Linux build -> registered CTest (plus the C++ port's exact-equivalence test) -> 
 trial at a time -> gates on non-held-out inputs (smoke_fairtime, gate_fairtime) -> Python/C++ bit-identity
 of SEM-RRT* on the gate maps -> record -> held-out collection in checkpointed chunks -> strict
 validation of the primary method -> reports -> stop. Registrations: EXPERIMENTS (fairtime:
-logs/a4_rpbit_fairtime_20261117, selfstop: logs/a4_rpbit_selfstop_20261117); a started trial is never retried.
+logs/a4_rpbit_fairtime_20261117, selfstop: logs/a4_rpbit_selfstop_20261117, putn: logs/a4_rpbit_putn_20261119);
+a started trial is never retried.
 """
 from __future__ import annotations
 
@@ -42,7 +43,14 @@ EXPERIMENTS = dict(
                   heldout='heldout_selfstop', gates=('smoke_selfstop', 'gate_selfstop'),
                   identity_gate=dict(IDENTITY_GATE, phase='gate_selfstop'), record='a4_rpbit_selfstop_record_v1',
                   module='kaggle_a4_rpbit.selfstop',
-                  title='cả hai tự dừng khi hội tụ (SEM-RRT* C++ theo luật của A4), Kaggle `heldout_selfstop`'))
+                  title='cả hai tự dừng khi hội tụ (SEM-RRT* C++ theo luật của A4), Kaggle `heldout_selfstop`'),
+    # Same pipeline with two PUTN arms beside the self-stop SEM-RRT* and A4, 10 s cap (logs/a4_rpbit_putn_20261119);
+    # the CTest set adds the PUTN port tests and the C ABI test of the bridge that carries it.
+    putn=dict(config=protocol.PUTN_KAGGLE_CONFIG, registration=ROOT / 'logs/a4_rpbit_putn_20261119/registration.json',
+              heldout='heldout_putn', gates=('smoke_putn', 'gate_putn'), identity_gate=dict(IDENTITY_GATE, phase='gate_putn'),
+              record='a4_rpbit_putn_record_v1', module='kaggle_a4_rpbit.putn',
+              ctest=REQUIRED_CTEST + ('putn_paper', 'putn_static', 'terrain_capi'),
+              title='A4, SEM-RRT* C++ và PUTN (hai nhánh), trần 10 s, Kaggle `heldout_putn`'))
 
 
 def check_registration(config_path, config, experiment=EXPERIMENTS['fairtime']):
@@ -107,12 +115,15 @@ def pipeline(args, campaign, output, python, env, started, work_epoch, hard_dead
     identity = dict(base.freeze_runtime(campaign, output, worker, bridge, python, env, hard_deadline),
                     sem_library_sha256=file_hash(library))
     base.status(campaign, 'CORRECTNESS')
-    base.correctness(campaign, python, env, identity, hard_deadline, tests=REQUIRED_CTEST)
+    base.correctness(campaign, python, env, identity, hard_deadline, tests=experiment.get('ctest', REQUIRED_CTEST))
     cores = config['execution']['cores']
     machine = base.hardware(campaign, cores)
     if machine['registered_physical_cores'] != len(cores):
         # Timing is the subject of this run: every lane on its own physical core.
         raise RuntimeError(f'BLOCKED_RESOURCE: cores {cores} are not on distinct physical cores')
+    validation = config['execution'].get('validation_cores', cores)
+    if not set(validation) <= set(machine['affinity']):
+        raise RuntimeError(f"BLOCKED_RESOURCE: validation cores {validation} are not all in the affinity {machine['affinity']}")
 
     def checkpoint():
         base.export_checkpoint(campaign, output, hard_deadline + 840., env)
