@@ -759,6 +759,9 @@ Tương phản mô tả `putn_slope35` − `putn_source` (157 cặp): APL −6,4
 - Time ở mục 6.2 và 6.6 so A4 viết bằng C++ với SEM-RRT* tái dựng bằng Python. Bản SEM-RRT* C++ đã có. Thí nghiệm
   so sánh cùng ngôn ngữ ở mục 6.7 đã chạy, nhưng ở đó SEM luôn dùng đủ 20 s. Thí nghiệm cả hai cùng tự dừng ở mục 6.8
   đã đăng ký nhưng chưa chạy.
+- Cột "tiền xử lý" (phần trước đồng hồ solve) của mọi lượt trước 21/11/2026 còn gồm thời gian import thư viện Python
+  và, với SEM-RRT*, lần gọi `platform.platform()`. Từ ngày đó các khoản này nằm ngoài đồng hồ và `Terrain::load` nhanh
+  hơn, nên số tiền xử lý cũ và mới không so trực tiếp được (`docs/A5_RP_BITSTAR.md` mục 6.9). Time không bị ảnh hưởng.
 - Phần vượt SEM về J₃₀ phụ thuộc bước tinh chỉnh (xem ablation); đây là hậu xử lý tất định, được khai
   báo, không phải thuộc tính của riêng BIT*.
 - Potential chưa mô hình hóa vật cản hình học; cận dưới quanh vật cản lỏng hơn (khoảng cách chứng chỉ

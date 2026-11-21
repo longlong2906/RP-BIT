@@ -1,10 +1,13 @@
 #include "terrain25d/Terrain.hpp"
 #include <algorithm>
 #include <array>
+#include <charconv>
 #include <cmath>
 #include <chrono>
 #include <fstream>
+#include <sstream>
 #include <stdexcept>
+#include <string_view>
 
 namespace terrain25d {
 namespace {
@@ -82,18 +85,53 @@ bool sameTraversabilityConfig(const TraversabilityConfig &a,const Traversability
         a.clearance_weight==b.clearance_weight && a.clearance_comfort_m==b.clearance_comfort_m &&
         a.feature_version==b.feature_version;
 }
-double readNumber(std::istream &in, bool allow_nodata=false) {
-    std::string token;
-    if (!(in>>token)) throw std::runtime_error("truncated terrain input");
+// Terrain::load takes whitespace-separated tokens from the whole file held in memory: formatted
+// stream extraction of every number was most of its time. The accepted inputs are the former ones.
+class Tokens {
+public:
+    explicit Tokens(const std::string &text) : next_(text.data()), end_(text.data()+text.size()) {}
+    bool next(std::string_view &token) {
+        while (next_!=end_ && space(*next_)) ++next_;
+        const char *begin=next_;
+        while (next_!=end_ && !space(*next_)) ++next_;
+        token=std::string_view(begin,static_cast<std::size_t>(next_-begin));
+        return begin!=next_;
+    }
+private:
+    static bool space(char c) { return c==' ' || (c>='\t' && c<='\r'); }   // std::isspace in the "C" locale
+    const char *next_,*end_;
+};
+double readNumber(Tokens &in, bool allow_nodata=false) {
+    std::string_view token;
+    if (!in.next(token)) throw std::runtime_error("truncated terrain input");
     if (allow_nodata && token=="nodata") return std::numeric_limits<double>::quiet_NaN();
-    std::size_t used=0;
-    double value=std::stod(token,&used);
-    if (used!=token.size() || !std::isfinite(value)) throw std::runtime_error("nonfinite/invalid number");
+    const char *last=token.data()+token.size();
+    double value=0;
+    const auto parsed=std::from_chars(token.data(),last,value);
+    // Anything but a plain normal number (explicit plus sign, hexadecimal, subnormal, out of range)
+    // is left to the former parser, so the accepted inputs and the values read do not change.
+    if (parsed.ec!=std::errc() || parsed.ptr!=last ||
+        (value!=0 && std::abs(value)<std::numeric_limits<double>::min())) {
+        const std::string copy(token);
+        std::size_t used=0;
+        value=std::stod(copy,&used);
+        if (used!=copy.size()) throw std::runtime_error("nonfinite/invalid number");
+    }
+    if (!std::isfinite(value)) throw std::runtime_error("nonfinite/invalid number");
     return value;
 }
-void expect(std::istream &in, const char *word) {
-    std::string token;
-    if (!(in>>token) || token!=word) throw std::runtime_error(std::string("expected ")+word);
+// An integer as operator>> read it: an optional sign, decimal digits, within the range of int.
+bool readInteger(Tokens &in, int &value) {
+    std::string_view token;
+    if (!in.next(token)) return false;
+    const char *first=token.data(),*last=first+token.size();
+    if (first!=last && *first=='+') { ++first; if (first!=last && *first=='-') return false; }
+    const auto parsed=std::from_chars(first,last,value);
+    return parsed.ec==std::errc() && parsed.ptr==last;
+}
+void expect(Tokens &in, const char *word) {
+    std::string_view token;
+    if (!in.next(token) || token!=word) throw std::runtime_error(std::string("expected ")+word);
 }
 }
 
@@ -143,12 +181,16 @@ Terrain::Terrain(int nx,int ny,double x0,double y0,double dx,double dy,
 }
 
 Terrain Terrain::load(const std::string &filename) {
-    std::ifstream in(filename);
-    if (!in) throw std::runtime_error("cannot open terrain: "+filename);
+    std::ifstream file(filename);
+    if (!file) throw std::runtime_error("cannot open terrain: "+filename);
+    std::ostringstream content;
+    content<<file.rdbuf();
+    const std::string text=content.str();
+    Tokens in(text);
     expect(in,"T25D"); expect(in,"1"); expect(in,"units"); expect(in,"m");
     expect(in,"diagonal"); expect(in,"SW_NE"); expect(in,"grid");
     int nx=0,ny=0;
-    if (!(in>>nx>>ny) || nx<2 || ny<2 || static_cast<long long>(nx)*ny>100000000)
+    if (!readInteger(in,nx) || !readInteger(in,ny) || nx<2 || ny<2 || static_cast<long long>(nx)*ny>100000000)
         throw std::runtime_error("invalid grid dimensions");
     double x0=readNumber(in),y0=readNumber(in),dx=readNumber(in),dy=readNumber(in);
     expect(in,"model");
@@ -158,15 +200,15 @@ Terrain Terrain::load(const std::string &filename) {
     for (auto &z:heights) z=readNumber(in,true);
     expect(in,"mask");
     std::vector<int> mask(static_cast<std::size_t>(nx-1)*(ny-1));
-    for (auto &m:mask) { if (!(in>>m) || (m!=0 && m!=1)) throw std::runtime_error("invalid mask"); }
+    for (auto &m:mask) { if (!readInteger(in,m) || (m!=0 && m!=1)) throw std::runtime_error("invalid mask"); }
     expect(in,"rectangles");
     int n=0;
-    if (!(in>>n) || n<0 || n>1000000) throw std::runtime_error("invalid rectangle count");
+    if (!readInteger(in,n) || n<0 || n>1000000) throw std::runtime_error("invalid rectangle count");
     std::vector<Rect> rects;
     for (int k=0;k<n;++k) rects.push_back({readNumber(in),readNumber(in),readNumber(in),readNumber(in)});
     expect(in,"end");
-    std::string extra;
-    if (in>>extra) throw std::runtime_error("unexpected trailing data");
+    std::string_view extra;
+    if (in.next(extra)) throw std::runtime_error("unexpected trailing data");
     return Terrain(nx,ny,x0,y0,dx,dy,std::move(heights),std::move(mask),std::move(rects),radius,margin,slope);
 }
 

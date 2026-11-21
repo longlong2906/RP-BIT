@@ -13,7 +13,7 @@ from pathlib import Path
 from corridor_v3_validation import risk_metrics
 from corridor_v4_execution import file_hash, read
 from pri_portfolio_validation import sharp_turns
-from rp_bit_protocol import NATIVE_KINDS, PUTN
+from rp_bit_protocol import A5, A5_SWITCHES, NATIVE_KINDS, PUTN
 from run_safe_length import _csv_path, _events
 from sem_exposure_validation import objective_metrics, validate_geometry
 
@@ -64,6 +64,58 @@ def _same(a, b):
     if isinstance(a, list) and isinstance(b, list):
         return len(a) == len(b) and all(_same(x, y) for x, y in zip(a, b))
     return a == b
+
+
+def a5_next_batch(stale, drawn, options):
+    """The registered A5 batch schedule (rpA5NextBatch in src/RpBitA5.cpp), restated here."""
+    used = stale + drawn
+    if not options["batch_growth"] or used >= options["window_samples"]:
+        return options["batch_min"]
+    return min(max(options["batch_min"], used), options["window_samples"] - used)
+
+
+def _a5_checks(request, worker, usable):
+    """A5 ran the registered options, and its batch sizes and stop follow from its own batch log."""
+    errors, options = [], request["rp_bit_a5"]
+    effective = worker.get("effective_rp_bit_a5") or {}
+    if not _same(worker.get("requested_rp_bit_a5"), options):
+        errors.append("requested_rp_bit_a5_mismatch")
+    if any(effective.get(key) != options[key] for key in ("window_samples", "batch_min", *A5_SWITCHES)):
+        errors.append("effective_rp_bit_a5_mismatch")
+    if worker.get("rp_counters", {}).get("heuristic_violations") != 0:
+        errors.append("heuristic_bound_violation_on_incumbent")
+    origins = [event.get("event_origin") for event in usable]
+    if not options["refine"] and "rp_refinement" in origins:
+        errors.append("refinement_event_with_refine_off")
+    seeds = [index for index, origin in enumerate(origins) if origin == "a5_lattice_seed_refined"]
+    if seeds not in ([], [0]) or (seeds and not options["seed"]) or bool(seeds) != (worker.get("seed_status") == "published"):
+        errors.append("a5_seed_event_inconsistent")
+    log, eps, window = worker.get("batch_log") or [], effective.get("stop_relative_eps"), options["window_samples"]
+    reference, stale, consistent = math.inf, 0, finite(eps)
+    for index, entry in enumerate(log if consistent else []):
+        completed = log[index - 1]["random_samples"] if index else 0
+        published = entry.get("published_J")
+        if window and published is not None:
+            threshold = reference * (1 - eps)
+            if finite(threshold) and abs(published - threshold) <= 1e-9 * threshold:
+                # The published J was serialised to JSON: do not second-guess a decision made on the last digit.
+                stale = entry.get("stale_samples")
+                reference = published if stale == 0 else reference
+            elif published < threshold:
+                reference, stale = published, 0
+            else:
+                stale += completed
+        consistent = consistent and entry.get("stale_samples") == stale
+        # Once a solution exists, each batch size is the schedule applied one boundary earlier.
+        if index and log[index - 1].get("published_J") is not None:
+            before = log[index - 1]
+            consistent = consistent and entry.get("random_samples") == a5_next_batch(before["stale_samples"], before["random_samples"], options)
+    converged = worker.get("termination_reason") == "CONVERGED_NO_IMPROVEMENT"
+    full = bool(window and log and finite(log[-1].get("stale_samples")) and log[-1]["stale_samples"] >= window)
+    early = any(finite(entry.get("stale_samples")) and window and entry["stale_samples"] >= window for entry in log[:-1])
+    if not consistent or converged != full or early:
+        errors.append("a5_convergence_inconsistent")
+    return errors
 
 
 def _replay_checks(directory, entry, request, worker, method):
@@ -259,6 +311,8 @@ def validate_trial(directory, entry, info, config, *, oracle, field, full=False)
             errors.append("heuristic_bound_violation_on_incumbent")
         if not request["rp_bit"].get("refine", True) and any(e.get("event_origin") == "rp_refinement" for e in usable):
             errors.append("refinement_event_with_refine_off")
+    if kind == A5:
+        errors.extend(_a5_checks(request, worker, usable))
     if kind == "sem_refine":
         errors.extend(_replay_checks(directory, entry, request, worker, config["methods"][entry["method"]]))
         row["replay"] = _replay_summary(worker)
@@ -273,7 +327,7 @@ def validate_trial(directory, entry, info, config, *, oracle, field, full=False)
         # only a disagreement between the two independent verdicts is.
         if not strict["correctness_errors"] and bool(strict["success"]) != safe:
             errors.append("strict_and_fast_verdicts_disagree")
-        if kind in ("rp_bit", "sem_refine"):
+        if kind in ("rp_bit", "sem_refine", A5):
             row["events_j_sem"] = [[e["elapsed_s"], scored(e).get("j_sem")] for e in usable]
     row["success"] = safe and not errors
     row["attained_safe"] = row["success"]

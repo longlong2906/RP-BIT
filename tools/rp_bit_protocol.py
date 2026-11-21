@@ -32,7 +32,11 @@ NATIVE = "sem_native"
 DERIVED = "sem_refine"
 # putn_native: PUTN/PF-RRT* paper-first static port on its own objective, run by the native worker like SEM.
 PUTN = "putn_native"
-KINDS = ("sem_native", "sem_exposure", "rp_bit", DERIVED, PUTN)
+# A5 (a5_rpbitstar_v1): A4 plus the sample window on growing batches, the slope shortcut, lazy refinement and the seed.
+A5 = "rp_bit_a5"
+A5_DEV_CONFIG = ROOT / "configs/a4_rpbitstar_v1_a5_dev.json"
+A5_SWITCHES = ("refine", "batch_growth", "fast_validity", "lazy_refine", "seed")
+KINDS = ("sem_native", "sem_exposure", "rp_bit", DERIVED, PUTN, A5)
 NATIVE_KINDS = ("sem_native", PUTN)
 DECISION_RULE = "refine_attribution_v1"
 FAMILIES = ("traversable_hill", "ridge_pass", "rolling_terrain", "narrow_passage", "mixed_obstacles")
@@ -62,6 +66,15 @@ def load_config(path=CONFIG):
             if (set(method) - {"kind", "convergence_stop", "tau_slope_cap_deg"} or ("tau_slope_cap_deg" in method
                     and (type(cap) is not float or not math.isfinite(cap) or not 0 < cap <= 90))):
                 raise ValueError("invalid PUTN method: " + name)
+        if method["kind"] == A5:
+            # Every switch and size is registered explicitly; lazy refinement and the seed need refinement.
+            sizes = [method.get("window_samples"), method.get("batch_min")]
+            if (set(method) != {"kind", "lambda", "window_samples", "batch_min", *A5_SWITCHES}
+                    or type(method["lambda"]) is not float or not math.isfinite(method["lambda"]) or method["lambda"] < 0
+                    or any(type(method[key]) is not bool for key in A5_SWITCHES)
+                    or any(type(size) is not int for size in sizes) or sizes[0] < 0 or sizes[1] <= 0
+                    or ((method["seed"] or method["lazy_refine"]) and not method["refine"])):
+                raise ValueError("invalid A5 method: " + name)
         if method["kind"] == DERIVED:
             times = method.get("refine_at_s")
             if (set(method) != {"kind", "source", "lambda", "refine_at_s"} or method["source"] != NATIVE
@@ -189,6 +202,9 @@ def request_for(entry, info, config, phase=None, field_path=None, field_metadata
         sem_exposure={"lambda": method["lambda"], "risk_scale": 40.})
     if method["kind"] == "rp_bit":
         request["rp_bit"] = {key: value for key, value in method.items() if key not in ("kind", "lambda")}
+    if method["kind"] == A5:
+        request["rp_bit_a5"] = {key: value for key, value in method.items() if key not in ("kind", "lambda")}
+        request["batch_after_first_solution"] = method["batch_min"]
     return request
 
 

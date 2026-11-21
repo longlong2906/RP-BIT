@@ -89,7 +89,22 @@ def validate_request(request):
         raise ValueError("frozen map hash mismatch")
 
 
+def _preload():
+    """Loading the libraries and identifying the host are process start-up, not preprocessing:
+    both happen before the clock starts."""
+    platform.platform()  # cached by the platform module; the first call takes about 70 ms on Windows
+    try:
+        import numpy  # noqa: F401
+        import scipy.ndimage  # noqa: F401  (SEMNativeModel imports it on first use)
+        import sem_native_cpp  # noqa: F401
+        import sem_native_planner  # noqa: F401
+        import terrain_compare_bridge  # noqa: F401
+    except ModuleNotFoundError:
+        pass  # reported as BLOCKED_DEPENDENCY by run(), where the module is first needed
+
+
 def run(request_file, output):
+    _preload()
     began = time.perf_counter()
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)

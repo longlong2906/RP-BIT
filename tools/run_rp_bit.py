@@ -31,11 +31,15 @@ def phase_config(config, phase):
 
 
 def _collect(task):
+    import rp_bit_a5_field
     from run_sem_exposure import _collect_trial
     methods = task["config"]["methods"]
     # SEM-RRT* and PUTN both run in the native worker, without the planner SEM field file.
+    # A5 receives the same field in the binary container; every other kind keeps the text exchange.
     return _collect_trial(task, request_builder=protocol.request_for,
-                          is_native=lambda entry: methods[entry["method"]]["kind"] in protocol.NATIVE_KINDS)
+                          is_native=lambda entry: methods[entry["method"]]["kind"] in protocol.NATIVE_KINDS,
+                          field_exchange=lambda entry: (rp_bit_a5_field.FILE_NAME, rp_bit_a5_field.build_field_file)
+                          if methods[entry["method"]]["kind"] == protocol.A5 else None)
 
 
 def _validate_map(task):

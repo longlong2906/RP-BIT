@@ -28,10 +28,11 @@ ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "configs/a3t_sem_exposure_v1.json"
 
 
-def _collect_trial(task, *, request_builder=None, is_native=None):
+def _collect_trial(task, *, request_builder=None, is_native=None, field_exchange=None):
     """One fresh spawn process; own field build and one actual planner process.
 
-    `is_native(entry)` selects the trials run by the native worker (default: the method `sem_native`)."""
+    `is_native(entry)` selects the trials run by the native worker (default: the method `sem_native`).
+    `field_exchange(entry)` may return another (file name, builder) for that trial's planner SEM field."""
     import psutil
     import sem_exposure_protocol as protocol
     from safe_length_field import build_field_file
@@ -53,13 +54,16 @@ def _collect_trial(task, *, request_builder=None, is_native=None):
             raise ValueError("frozen worker changed")
         native = is_native(entry) if is_native else entry["method"] == "sem_native"
         metadata = None
-        field_path = directory / "planner_sem_field.txt"
+        name, build = (field_exchange(entry) if field_exchange else None) or ("planner_sem_field.txt", build_field_file)
+        field_path = directory / name
         if native:
             if not task.get("bridge") or file_hash(task["bridge"]) != task["bridge_sha256"]:
                 raise ValueError("native bridge missing or changed")
         else:
+            # Loading the library is process start-up, not field construction: it happens before the clock.
+            from scipy import ndimage  # noqa: F401
             started = time.perf_counter()
-            metadata = build_field_file(info["cloud_path"], info["map_path"], info["bounds"], field_path)
+            metadata = build(info["cloud_path"], info["map_path"], info["bounds"], field_path)
             execution["field_build_s"] = time.perf_counter() - started
             if file_hash(field_path) != metadata["field_sha256"]:
                 raise ValueError("field hash mismatch before launch")

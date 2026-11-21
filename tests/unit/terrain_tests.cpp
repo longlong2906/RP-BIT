@@ -1,5 +1,7 @@
 #include "terrain25d/Terrain.hpp"
 #include <cmath>
+#include <filesystem>
+#include <fstream>
 #include <functional>
 #include <iostream>
 #include <random>
@@ -142,6 +144,56 @@ int main() {
             require(corridor.validMotion(c,d)==(width>.20),"indexed corridor/contact failure");
         }
         std::cout<<"G_BVH PASS scan agreement/reverse/split/contact/NoData/empty/index lifecycle (2045 edges)\n";
+        // Terrain::load: every accepted number form gives the exact value; malformed files are rejected.
+        const auto folder=std::filesystem::temp_directory_path()/("terrain_load_"+std::to_string(std::random_device{}()));
+        std::filesystem::create_directories(folder);
+        const auto file=(folder/"map.t25d").string();
+        const auto save=[&](const std::string &text) { std::ofstream(file,std::ios::binary)<<text; };
+        const auto loads=[&](const std::string &text) {
+            save(text);
+            try { Terrain::load(file); } catch(const std::exception&) { return false; }
+            return true;
+        };
+        const auto replaced=[](std::string text,const std::string &from,const std::string &to) {
+            for (std::size_t at=0;(at=text.find(from,at))!=std::string::npos;at+=to.size()) text.replace(at,from.size(),to);
+            return text;
+        };
+        const std::string head="T25D 1\nunits m\ndiagonal SW_NE\ngrid 3 3 0 0 1 1\nmodel 0.1 0 60\nheights\n";
+        const std::string rows="+0.75 .5 1\n0x1p-2 0.30000000000000004 1.\n5e-1 -0.125 1\n";
+        const std::string tail="mask\n0 0\n0 0\nrectangles 1\n0.2 0.2 0.4 0.4\nend\n";
+        try {
+            for (const auto &text:{head+rows+tail,replaced(replaced(head+rows+tail,"\n","\r\n")," ","\t")}) {
+                save(text);
+                const auto map=Terrain::load(file);
+                // Read back at the nodes whose value Terrain::height returns without arithmetic.
+                const double expected[2][2]={{.75,.5},{.25,.30000000000000004}};
+                for (int j=0;j<2;++j) for (int i=0;i<2;++i) {
+                    double value=-1.;
+                    require(map.height({double(i),double(j)},value)&&value==expected[j][i],"load changed a height");
+                }
+                require(map.nx()==3&&map.ny()==3&&map.radius()==.1&&!map.validState({.3,.3})&&map.validState({1.5,1.5}),
+                        "load changed the grid, the model or an obstacle");
+            }
+            save(head+replaced(rows,"0.30000000000000004","nodata")+tail);
+            double value=0.;
+            require(!Terrain::load(file).height({.5,.5},value),"nodata height was read as data");
+            require(!loads(""),"empty terrain file accepted");
+            require(!loads(replaced(head,"T25D","T25E")+rows+tail),"wrong magic accepted");
+            require(!loads(head+rows+replaced(tail,"end\n","")),"truncated terrain file accepted");
+            require(!loads(head+rows+tail+"0\n"),"trailing data accepted");
+            for (const char *bad:{"inf","nan","abc","1.5x","1e999",""})
+                require(!loads(head+replaced(rows,"-0.125",bad)+tail),"invalid height accepted");
+            require(!loads(replaced(head,"grid 3 3","grid 3.0 3")+rows+tail),"fractional grid size accepted");
+            require(!loads(replaced(head,"0 0 1 1","0 0 nodata 1")+rows+tail),"nodata spacing accepted");
+            for (const char *bad:{"2","1.0","-1","x"})
+                require(!loads(head+rows+replaced(tail,"mask\n0 0","mask\n0 "+std::string(bad))),"invalid mask accepted");
+            require(!loads(head+rows+replaced(tail,"rectangles 1","rectangles -1")),"negative rectangle count accepted");
+            require(!loads(head+rows+replaced(tail,"rectangles 1","rectangles 2")),"missing rectangle accepted");
+        } catch(...) {std::filesystem::remove_all(folder);throw;}
+        std::filesystem::remove_all(folder);
+        bool missingFile=false; try { Terrain::load(file); } catch(const std::exception&) {missingFile=true;}
+        require(missingFile,"missing terrain file accepted");
+        std::cout<<"G_LOAD PASS number forms/CRLF/tabs/nodata/malformed files\n";
         return 0;
     } catch(const std::exception &e) {std::cerr<<"FAIL: "<<e.what()<<'\n';return 1;}
 }

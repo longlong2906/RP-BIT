@@ -396,6 +396,7 @@ int runPriPortfolioWorker(const bj::object &request,const fs::path &output,bool 
 #include "PriPathSearchWorker.inc"
 #include "RpBitWorker.inc"
 #include "RpRefineReplayWorker.inc"
+#include "RpBitA5Worker.inc"
 int main(int argc,char **argv) {
     try {
         if(argc!=3)throw std::runtime_error("usage: terrain_benchmark REQUEST.json OUTPUT_DIRECTORY");
@@ -408,6 +409,7 @@ int main(int argc,char **argv) {
         auto logname=(output/"ompl.log").string();ompl::msg::OutputHandlerFile omplLog(logname.c_str());
         ompl::msg::useOutputHandler(&omplLog);ompl::msg::setLogLevel(ompl::msg::LOG_INFO);
         if(request.if_contains("rp_refine_replay"))return runRpRefineReplayWorker(request,output,cloudHandshake);
+        if(request.if_contains("rp_bit_a5"))return runRpBitA5Worker(request,output,cloudHandshake);
         if(request.if_contains("rp_bit"))return runRpBitWorker(request,output,cloudHandshake);
         if(request.if_contains("pri_pathsearch"))return runPriPathSearchWorker(request,output,cloudHandshake);
         if(request.if_contains("pri_portfolio"))return runPriPortfolioWorker(request,output,cloudHandshake);

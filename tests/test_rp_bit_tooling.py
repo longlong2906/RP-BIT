@@ -449,8 +449,10 @@ class PutnConfigTests(unittest.TestCase):
     def test_runner_sends_putn_to_the_native_worker(self):
         seen = {}
 
-        def collect(task, *, request_builder, is_native):
+        def collect(task, *, request_builder, is_native, field_exchange):
             seen.update({name: is_native(dict(method=name)) for name in task["config"]["methods"]})
+            # No arm of this config is A5: the planner field stays in the text exchange.
+            self.assertTrue(all(field_exchange(dict(method=name)) is None for name in task["config"]["methods"]))
         with mock.patch("run_sem_exposure._collect_trial", collect):
             runner._collect(dict(config=self.config))
         self.assertEqual(seen, {protocol.NATIVE: True, "a4_rpbit_l33_m20": False, "putn_slope35": True, "putn_source": True})
@@ -767,6 +769,149 @@ def synthetic_phase(directory, *, sem_failure=True, sem_work=None):
                                             phases=dict(synthetic=phase)), config_sha256="fixture",
         binary_sha256="fixture", entries=entries)), encoding="utf-8")
     (directory / "summary.json").write_text(json.dumps(dict(synthetic_fixture=True, rows=rows)), encoding="utf-8")
+
+
+A5_ARMS = ("a5_rpbit_l33_w4000", "a5_rpbit_l33_w1000", "a5_rpbit_l33_w4000_noseed", "a5_rpbit_l33_w4000_eager",
+           "a5_rpbit_l33_w4000_batchonly")
+
+
+class A5ConfigTests(unittest.TestCase):
+    """A5 dev preview: the self-stop SEM-RRT*, the locked A4 (M = 20 and M = 5) and five A5 arms, on seen maps only."""
+
+    def setUp(self):
+        self.config = protocol.load_config(protocol.A5_DEV_CONFIG)
+
+    def test_arms_and_phases(self):
+        selfstop = protocol.load_config(ROOT / "configs/a4_rpbitstar_v1_selfstop_dev.json")
+        locked, methods = protocol.load_config(), self.config["methods"]
+        self.assertEqual(methods[protocol.NATIVE], selfstop["methods"][protocol.NATIVE])
+        for name in ("a4_rpbit_l33_m20", "a4_rpbit_l33"):
+            self.assertEqual(methods[name], locked["methods"][name], name)
+        # The primary arm keeps the registered stop (the SEM window, in samples) with every mechanism on.
+        primary = methods["a5_rpbit_l33_w4000"]
+        self.assertEqual(primary["window_samples"], methods[protocol.NATIVE]["convergence_stop"]["window_iterations"])
+        self.assertEqual(primary["window_samples"], 200 * methods["a4_rpbit_l33_m20"]["stop_batches"])
+        self.assertTrue(all(primary[key] for key in protocol.A5_SWITCHES))
+        self.assertEqual(methods["a5_rpbit_l33_w1000"], dict(primary, window_samples=1000))
+        # Ablation ladder: each arm drops one mechanism of the arm before it.
+        self.assertEqual(methods["a5_rpbit_l33_w4000_noseed"], dict(primary, seed=False))
+        self.assertEqual(methods["a5_rpbit_l33_w4000_eager"], dict(primary, seed=False, lazy_refine=False))
+        self.assertEqual(methods["a5_rpbit_l33_w4000_batchonly"], dict(primary, seed=False, lazy_refine=False, fast_validity=False))
+        self.assertEqual({name for name, method in methods.items() if method["kind"] == protocol.A5}, set(A5_ARMS))
+        self.assertEqual(set(self.config["phases"]), {"smoke_a5", "probe_a5", "dev_a5"})
+        for name, phase in self.config["phases"].items():
+            self.assertEqual((phase["methods"], phase["primary_method"]), (list(methods), "a5_rpbit_l33_w4000"), name)
+        dev, probe = self.config["phases"]["dev_a5"], self.config["phases"]["probe_a5"]
+        self.assertEqual((dev["maps"], dev["map_seeds"], dev["planning_budget_s"]), ("dev", [41001, 41002, 41003], 20.))
+        self.assertEqual((probe["maps"], probe["map_seeds"], probe["planner_seeds"]), ("dev", dev["map_seeds"], dev["planner_seeds"][:1]))
+        self.assertEqual((len(protocol.inventory(self.config, "dev_a5")), len(protocol.inventory(self.config, "probe_a5"))), (600, 120))
+        self.assertTrue(all(pair[0] in A5_ARMS for pair in self.config["analysis"]["contrasts"]))
+
+    def test_requests(self):
+        info = dict(map_path=str(ROOT / "tests/fixtures/map.t25d"), cloud_path=str(ROOT / "tests/fixtures/cloud.npy"),
+                    cloud_sha256="cloud", map_sha256="map", start=[2., 10.], goal=[18., 10.])
+        arguments = dict(field_path=ROOT / "tests/fixtures/planner_field.txt", bridge=ROOT / "tests/fixtures/libbridge.dll",
+                         field_metadata=dict(field_sha256="field", cloud_sha256="cloud", builder_source_sha256="builder"))
+        entries = {entry["method"]: entry for entry in protocol.inventory(self.config, "probe_a5")[:8]}
+        a4 = protocol.request_for(entries["a4_rpbit_l33_m20"], info, self.config, **arguments)
+        self.assertNotIn("rp_bit_a5", a4)
+        strip = lambda r: {k: v for k, v in r.items() if k not in ("rp_bit", "rp_bit_a5", "batch_after_first_solution", "variant_id")}
+        for name in A5_ARMS:
+            method = self.config["methods"][name]
+            request = protocol.request_for(entries[name], info, self.config, **arguments)
+            self.assertEqual(request["rp_bit_a5"], {k: v for k, v in method.items() if k not in ("kind", "lambda")})
+            self.assertEqual((request["samples_per_batch"], request["batch_after_first_solution"]), (100, method["batch_min"]))
+            # Apart from its own block, the batch size after the first solution and its name, it is the A4 request.
+            self.assertEqual(strip(request), strip(a4))
+            self.assertEqual(request["variant_id"], name)
+            self.assertNotIn("rp_bit", request)
+
+    def test_invalid_a5_methods(self):
+        changes = [dict(refine=False), dict(refine=False, seed=False), dict(refine=False, lazy_refine=False), dict(window_samples=-1),
+                   dict(window_samples=4000.), dict(batch_min=0), dict(batch_growth=1), dict(extra=1), {"lambda": 33},
+                   dict(stop_batches=20), dict(engine="cpp"), dict(convergence_stop=STOP)]
+        changes += [{key: None} for key in ("window_samples", "batch_min", *protocol.A5_SWITCHES)]
+        for change in changes:
+            config = copy.deepcopy(self.config)
+            method = config["methods"]["a5_rpbit_l33_w4000"]
+            for key, value in change.items():
+                if value is None:
+                    del method[key]
+                else:
+                    method[key] = value
+            with tempfile.TemporaryDirectory() as folder:
+                path = Path(folder) / "config.json"
+                path.write_text(json.dumps(config), encoding="utf-8")
+                with self.assertRaises(ValueError, msg=str(change)):
+                    protocol.load_config(path)
+
+    def test_runner_sends_a5_to_the_cpp_worker(self):
+        import rp_bit_a5_field
+        seen, exchange = {}, {}
+
+        def collect(task, *, request_builder, is_native, field_exchange):
+            for name in task["config"]["methods"]:
+                seen[name], exchange[name] = is_native(dict(method=name)), field_exchange(dict(method=name))
+        with mock.patch("run_sem_exposure._collect_trial", collect):
+            runner._collect(dict(config=self.config))
+        self.assertEqual(seen, {name: name == protocol.NATIVE for name in self.config["methods"]})
+        # Only A5 receives the binary container; SEM-RRT* has no field file and A4 keeps the text exchange.
+        binary = (rp_bit_a5_field.FILE_NAME, rp_bit_a5_field.build_field_file)
+        self.assertEqual(exchange, {name: binary if name in A5_ARMS else None for name in self.config["methods"]})
+
+    def test_binary_field_holds_the_cells_of_the_text_exchange(self):
+        import hashlib
+        import struct
+        import numpy as np
+        import rp_bit_a5_field
+        import safe_length_field
+        with tempfile.TemporaryDirectory() as folder:
+            folder = Path(folder)
+            # Labeled synthetic cloud: a rough plane with a hole, so some cells are unsupported.
+            x, y = (v.ravel() for v in np.meshgrid(np.arange(.025, 6., .05), np.arange(.025, 6., .05)))
+            z = .1 * x + .05 * y + .02 * np.random.default_rng(5).standard_normal(len(x))
+            keep = ~((x > 2.) & (x < 2.6) & (y > 3.) & (y < 3.5))
+            cloud, terrain, bounds = folder / "cloud.npy", folder / "map.t25d", (0., 0., 6., 6.)
+            np.save(cloud, np.column_stack((x, y, z))[keep], allow_pickle=False)
+            terrain.write_text("test fixture: only hashed\n", encoding="ascii")
+            text = safe_length_field.build_field_file(cloud, terrain, bounds, folder / "planner_sem_field.txt")
+            target = folder / rp_bit_a5_field.FILE_NAME
+            binary = rp_bit_a5_field.build_field_file(cloud, terrain, bounds, target)
+            for key in ("version", "cloud_sha256", "map_sha256", "builder_source_sha256", "supported_cells",
+                        "observed_cells", "input_points", "shape_yx"):
+                self.assertEqual(binary[key], text[key], key)
+            data = target.read_bytes()
+            self.assertEqual((binary["field_sha256"], data[:8]), (hashlib.sha256(data).hexdigest(), rp_bit_a5_field.MAGIC))
+            lines = (folder / "planner_sem_field.txt").read_text(encoding="ascii").split("\n")
+            nx, ny, *grid = struct.unpack_from("<2i5d", data, 8)
+            self.assertEqual([nx, ny, *grid], [float(value) for value in lines[1].split()])
+            self.assertEqual(len(data), 56 + 9 * nx * ny)
+            cells = np.array([[float(value) for value in line.split()] for line in lines[2:-1]])
+            support = np.frombuffer(data, np.uint8, nx * ny, 56)
+            risk = np.frombuffer(data, "<f8", nx * ny, 56 + nx * ny)
+            self.assertTrue(np.array_equal(support, cells[:, 0]) and 0 < support.sum() < support.size)
+            # Bit for bit, not merely equal as numbers.
+            self.assertTrue(np.array_equal(risk.view(np.uint64), np.ascontiguousarray(cells[:, 1]).view(np.uint64)))
+            self.assertTrue(len(set(risk.tolist())) > 100)
+            with self.assertRaises(FileExistsError):
+                rp_bit_a5_field.build_field_file(cloud, terrain, bounds, target)
+
+    def test_scorer_restates_the_batch_schedule(self):
+        from rp_bit_validation import a5_next_batch
+
+        def sizes(options):
+            out, stale, drawn = [], 0, options["batch_min"]
+            while True:
+                out.append(drawn)
+                following = a5_next_batch(stale, drawn, options)
+                stale += drawn
+                if stale >= options["window_samples"]:
+                    return out
+                drawn = following
+        primary = self.config["methods"]["a5_rpbit_l33_w4000"]
+        self.assertEqual(sizes(primary), [500, 500, 1000, 2000])
+        self.assertEqual(sizes(self.config["methods"]["a5_rpbit_l33_w1000"]), [500, 500])
+        self.assertEqual(sizes(dict(primary, batch_growth=False, batch_min=200)), [200] * 20)
 
 
 class AnalysisTests(unittest.TestCase):
