@@ -4,8 +4,8 @@ Linux build -> registered CTest (plus the C++ port's exact-equivalence test) -> 
 trial at a time -> gates on non-held-out inputs (smoke_fairtime, gate_fairtime) -> Python/C++ bit-identity
 of SEM-RRT* on the gate maps -> record -> held-out collection in checkpointed chunks -> strict
 validation of the primary method -> reports -> stop. Registrations: EXPERIMENTS (fairtime:
-logs/a4_rpbit_fairtime_20261117, selfstop: logs/a4_rpbit_selfstop_20261117, putn: logs/a4_rpbit_putn_20261119);
-a started trial is never retried.
+logs/a4_rpbit_fairtime_20261117, selfstop: logs/a4_rpbit_selfstop_20261117, putn: logs/a4_rpbit_putn_20261119,
+a5: logs/a4_rpbit_a5_heldout_20261122); a started trial is never retried.
 """
 from __future__ import annotations
 
@@ -50,7 +50,15 @@ EXPERIMENTS = dict(
               heldout='heldout_putn', gates=('smoke_putn', 'gate_putn'), identity_gate=dict(IDENTITY_GATE, phase='gate_putn'),
               record='a4_rpbit_putn_record_v1', module='kaggle_a4_rpbit.putn',
               ctest=REQUIRED_CTEST + ('putn_paper', 'putn_static', 'terrain_capi'),
-              title='A4, SEM-RRT* C++ và PUTN (hai nhánh), trần 10 s, Kaggle `heldout_putn`'))
+              title='A4, SEM-RRT* C++ và PUTN (hai nhánh), trần 10 s, Kaggle `heldout_putn`'),
+    # A5 (primary) and its C1 + C2 arm beside the locked A4 and the self-stop SEM-RRT*, 20 s cap
+    # (logs/a4_rpbit_a5_heldout_20261122); the registration also freezes the planner sources (source_sha256),
+    # and the report adds the registered A5 verdict (tools/analyze_rp_bit_a5.py).
+    a5=dict(config=protocol.A5_KAGGLE_CONFIG, registration=ROOT / 'logs/a4_rpbit_a5_heldout_20261122/registration.json',
+            heldout='heldout_a5_kaggle', gates=('smoke_a5_kaggle', 'gate_a5_kaggle'),
+            identity_gate=dict(IDENTITY_GATE, phase='gate_a5_kaggle'), record='a5_rpbit_heldout_record_v1',
+            module='kaggle_a4_rpbit.a5', ctest=REQUIRED_CTEST + ('rp_bit_a5_core', 'rp_bit_a5_worker', 'terrain_unit'),
+            a5_verdict=True, title='A5 so với SEM-RRT* C++ và A4, trần 20 s, Kaggle `heldout_a5_kaggle`'))
 
 
 def check_registration(config_path, config, experiment=EXPERIMENTS['fairtime']):
@@ -62,6 +70,9 @@ def check_registration(config_path, config, experiment=EXPERIMENTS['fairtime']):
         raise ValueError('configuration differs from the registration')
     if registered['heldout_phase'] != experiment['heldout'] or registered['gates'] != list(experiment['gates']):
         raise ValueError('phases differ from the registration')
+    changed = [name for name, value in registered.get('source_sha256', {}).items() if file_hash(ROOT / name) != value]
+    if changed:
+        raise ValueError('source differs from the registration: ' + ', '.join(changed))
     return registered
 
 
@@ -211,6 +222,9 @@ def pipeline(args, campaign, output, python, env, started, work_epoch, hard_dead
                         (GATES[-1], f'cổng `{GATES[-1]}` (seed bản đồ 51001, không phải held-out)')):
         run_logged('report_' + name, [python, '-B', 'tools/analyze_rp_bit.py', '--input', results / name,
                    '--output', reports / name, '--title', title], campaign, hard_deadline, env)
+        if experiment.get('a5_verdict'):
+            run_logged('a5_verdict_' + name, [python, '-B', 'tools/analyze_rp_bit_a5.py', '--input', results / name,
+                       '--report', reports / name, '--output', reports / name], campaign, hard_deadline, env)
     base.status(campaign, 'DONE', phase=HELDOUT, report=f'reports/{HELDOUT}/REPORT.md')
     checkpoint()
 

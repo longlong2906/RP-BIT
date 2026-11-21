@@ -35,6 +35,8 @@ PUTN = "putn_native"
 # A5 (a5_rpbitstar_v1): A4 plus the sample window on growing batches, the slope shortcut, lazy refinement and the seed.
 A5 = "rp_bit_a5"
 A5_DEV_CONFIG = ROOT / "configs/a4_rpbitstar_v1_a5_dev.json"
+# A5 held-out on Kaggle: the primary A5 arm, its C1 + C2 arm, the locked A4 and the self-stop SEM-RRT*, 20 s, fresh seeds.
+A5_KAGGLE_CONFIG = ROOT / "configs/a4_rpbitstar_v1_a5_kaggle.json"
 A5_SWITCHES = ("refine", "batch_growth", "fast_validity", "lazy_refine", "seed")
 KINDS = ("sem_native", "sem_exposure", "rp_bit", DERIVED, PUTN, A5)
 NATIVE_KINDS = ("sem_native", PUTN)

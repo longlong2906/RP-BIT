@@ -181,7 +181,7 @@ def hardware(campaign, cores):
 
 
 def gate_verdict(directory, config, name):
-    """A gate passes with complete strict verdicts, no correctness error, every A4 trial successful and,
+    """A gate passes with complete strict verdicts, no correctness error, every A4 and A5 trial successful and,
     under a fixed SEM budget, every SEM run having done the whole iteration budget."""
     manifest, summary = read(directory / 'manifest.json'), read(directory / 'summary_full.json')
     work = config['phases'][name].get('sem_work_iterations')
@@ -197,6 +197,8 @@ def gate_verdict(directory, config, name):
             problems.append(f"{row['trial_id']}: correctness {row['correctness_errors']}")
         if kind(row) == 'rp_bit' and not row['success']:
             problems.append(f"{row['trial_id']}: A4 trial not successful")
+        if kind(row) == protocol.A5 and not row['success']:
+            problems.append(f"{row['trial_id']}: A5 trial not successful")
         if kind(row) == 'sem_native' and work and row.get('iterations') != work:
             problems.append(f"{row['trial_id']}: SEM did {row.get('iterations')} of {work} iterations")
     times = {k: [round(r['solve_time_s'], 3) for r in rows if kind(r) == k and isinstance(r.get('solve_time_s'), (int, float))]

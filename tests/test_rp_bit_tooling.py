@@ -914,6 +914,134 @@ class A5ConfigTests(unittest.TestCase):
         self.assertEqual(sizes(dict(primary, batch_growth=False, batch_min=200)), [200] * 20)
 
 
+class A5KaggleConfigTests(unittest.TestCase):
+    """A5 held-out on Kaggle: four dev arms unchanged, 20 s cap, one timed lane, fresh seeds, validation on 4 cores."""
+    ARMS = ["sem_native", "a4_rpbit_l33_m20", "a5_rpbit_l33_w4000", "a5_rpbit_l33_w4000_eager"]
+
+    def setUp(self):
+        self.config = protocol.load_config(protocol.A5_KAGGLE_CONFIG)
+
+    def test_dev_arms_budget_and_fresh_seeds(self):
+        dev = protocol.load_config(protocol.A5_DEV_CONFIG)
+        self.assertEqual(self.config["methods"], {name: dev["methods"][name] for name in self.ARMS})
+        for key in ("protocol_id", "schema_version", "safety"):
+            self.assertEqual(self.config[key], dev[key], key)
+        contrasts = [["a5_rpbit_l33_w4000", "a4_rpbit_l33_m20"], ["a5_rpbit_l33_w4000", "a5_rpbit_l33_w4000_eager"],
+                     ["a5_rpbit_l33_w4000_eager", "a4_rpbit_l33_m20"]]
+        self.assertEqual(self.config["analysis"], dict(dev["analysis"], contrasts=contrasts))
+        self.assertEqual(self.config["execution"], protocol.load_config(protocol.PUTN_KAGGLE_CONFIG)["execution"])
+        phases = self.config["phases"]
+        self.assertEqual(list(phases), ["smoke_a5_kaggle", "gate_a5_kaggle", "heldout_a5_kaggle"])
+        for name, phase in phases.items():
+            self.assertEqual((phase["methods"], phase["primary_method"]), (self.ARMS, "a5_rpbit_l33_w4000"), name)
+        without = lambda phase: {key: value for key, value in phase.items() if key != "methods"}
+        self.assertEqual(without(phases["smoke_a5_kaggle"]), without(dev["phases"]["smoke_a5"]))
+        gate, held = phases["gate_a5_kaggle"], phases["heldout_a5_kaggle"]
+        self.assertEqual((gate["maps"], gate["map_seeds"], gate["planner_seeds"], gate["planning_budget_s"]),
+                         ("generate", [51001], [516001], 20.))
+        self.assertEqual((held["maps"], held["planning_budget_s"]), ("generate", 20.))
+        fresh = set(held["map_seeds"]) | set(held["planner_seeds"])
+        self.assertEqual(fresh, set(range(111001, 111011)) | set(range(1116001, 1116006)))
+        self.assertEqual([len(protocol.inventory(self.config, name)) for name in phases], [28, 20, 1000])
+        for path in sorted((ROOT / "configs").glob("a4_rpbitstar_v1*.json")):
+            config = protocol.load_config(path)
+            for name, phase in config["phases"].items():
+                if (path, name) != (protocol.A5_KAGGLE_CONFIG, "heldout_a5_kaggle"):
+                    self.assertFalse(fresh & (set(phase["map_seeds"]) | set(phase["planner_seeds"])), (path.name, name))
+
+    def test_held_out_needs_the_flag(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with self.assertRaisesRegex(SystemExit, "held-out requires"):
+                runner.run(Path(folder) / "out", "heldout_a5_kaggle", "missing", "missing", config_path=protocol.A5_KAGGLE_CONFIG)
+            self.assertFalse((Path(folder) / "out").exists())
+
+
+class A5VerdictTests(unittest.TestCase):
+    """tools/analyze_rp_bit_a5.py applies the registered thresholds of the A5 plan to the verdicts and the report."""
+    ARMS = ("sem_native", "a4_rpbit_l33_m20", "a5_rpbit_l33_w4000")
+
+    def setUp(self):
+        import analyze_rp_bit_a5
+        self.tool = analyze_rp_bit_a5
+        self.folder = tempfile.TemporaryDirectory()
+        self.addCleanup(self.folder.cleanup)
+
+    def verdict(self, sem, a5, *, unsafe=(), sem_unsafe=(), strict=True, upper=1e-3, checks=True, sources=None):
+        """Slot i: SEM-RRT* takes sem[i] s and A5 a5[i] s; A5 (SEM-RRT*) is unsafe in the slots of `unsafe`
+        (`sem_unsafe`). Slot 0 is the only slot of its family."""
+        phase = Path(self.folder.name) / f"phase{len(list(Path(self.folder.name).iterdir()))}"
+        phase.mkdir()
+        config = protocol.load_config(protocol.A5_KAGGLE_CONFIG)
+        config["phases"] = dict(p=dict(config["phases"]["gate_a5_kaggle"], methods=list(self.ARMS)))
+        entries, fast, full = [], [], []
+        for slot, times in enumerate(zip(sem, [1.] * len(sem), a5)):
+            for method, time in zip(self.ARMS, times):
+                trial = f"m{slot}__s1__{method}"
+                entries.append(dict(trial_id=trial, map_id=f"m{slot}", family="flat" if slot == 0 else "ridge_pass",
+                                    planner_seed=1, method=method))
+                failed = slot in unsafe if method == self.ARMS[2] else slot in sem_unsafe if method == self.ARMS[0] else False
+                row = dict(trial_id=trial, success=not failed, solve_time_s=time,
+                           preprocessing_s=.1, field_build_s=.2, final_j_sem=100., termination_reason="CONVERGED_NO_IMPROVEMENT",
+                           full_validation=False)
+                fast.append(row)
+                if method == self.ARMS[2]:
+                    full.append(dict(row, full_validation=True))
+        manifest = dict(protocol_id=protocol.PROTOCOL_ID, phase="p", config=config, entries=entries,
+                        config_sha256="c", binary_sha256="b")
+        (phase / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+        (phase / "summary.json").write_text(json.dumps(dict(rows=fast)), encoding="utf-8")
+        if strict:
+            (phase / "summary_full.json").write_text(json.dumps(dict(rows=full)), encoding="utf-8")
+        primary = self.ARMS[2]
+        report = dict(sources=sources or analysis.load([phase])[3], complete=True, correctness_failures=0,
+                      criteria=[dict(method=primary, **{key: checks for key in self.tool.CHECKS})],
+                      contrasts=[dict(method=primary, baseline=self.ARMS[1], comparisons=[dict(
+                          safe_pairs=len(sem), metrics=dict(j_sem=dict(relative_pooled=0., relative_bootstrap=dict(
+                              upper95_one_sided=upper))))])])
+        out = self.tool.build(phase, report)
+        return {key: value["pass"] for key, value in out["criteria"].items()}, out
+
+    def test_thresholds_are_inclusive(self):
+        passed, out = self.verdict([5.] * 10, [1.] * 10)
+        self.assertTrue(all(passed.values()) and out["all_pass"], passed)
+        self.assertEqual(out["criteria"]["3_speed_vs_sem"]["ratio_of_means"], 5.)
+        self.assertFalse(self.verdict([5.] * 10, [1.000001] * 10)[0]["3_speed_vs_sem"])
+        self.assertFalse(self.verdict([5.] * 10, [1.] * 10, upper=1.0001e-3)[0]["2b_j30_vs_a4"])
+        self.assertFalse(self.verdict([5.] * 10, [1.] * 10, checks=False)[0]["2a_ten_checks_vs_sem"])
+        # Before-solve time is reported beside the solve time only: (5 + .3) / (1 + .3).
+        self.assertAlmostEqual(out["methods"][self.ARMS[2]]["speed_vs_sem"]["with_before_solve"]["ratio_of_means"], 5.3 / 1.3)
+
+    def test_faster_share(self):
+        self.assertTrue(self.verdict([5.5] * 9 + [.5], [1.] * 10)[0]["3_speed_vs_sem"])      # 9/10 faster, ratio 5
+        passed, out = self.verdict([6.25] * 8 + [.5] * 2, [1.] * 10)                          # 8/10 faster, ratio 5.1
+        self.assertFalse(passed["3_speed_vs_sem"])
+        self.assertAlmostEqual(out["criteria"]["3_speed_vs_sem"]["ratio_of_means"], 5.1)
+
+    def test_correctness_needs_strict_validation_not_every_slot_safe(self):
+        self.assertFalse(self.verdict([5.] * 10, [1.] * 10, strict=False)[0]["1_correctness"])
+        # An unsafe A5 slot is judged by the PSR checks of 2a, not by criterion 1; speed pairs leave it out.
+        passed, out = self.verdict([5.] * 10, [1.] * 10, unsafe=(3,))
+        self.assertTrue(passed["1_correctness"])
+        self.assertEqual((out["criteria"]["1_correctness"]["primary_safe"], out["criteria"]["3_speed_vs_sem"]["pairs"]), (9, 9))
+
+    def test_a_family_or_a_phase_without_safe_pairs(self):
+        # SEM-RRT* fails the only slot of a family (as on the smoke fixture nodata_thin_obstacle): that family has no pair.
+        passed, out = self.verdict([5.] * 10, [1.] * 10, sem_unsafe=(0,))
+        speed = out["methods"][self.ARMS[2]]["speed_vs_sem"]
+        self.assertEqual((speed["pairs"], speed["by_family"]["flat"]["pairs"], speed["by_family"]["flat"]["ratio_of_means"]), (9, 0, None))
+        self.assertTrue(passed["3_speed_vs_sem"])
+        self.assertIn("| flat | 0 | — | — | — |", self.tool.markdown(out))
+        # No pair at all: criterion 3 fails with its reason instead of raising.
+        passed, out = self.verdict([5.] * 10, [1.] * 10, sem_unsafe=range(10))
+        self.assertFalse(passed["3_speed_vs_sem"])
+        self.assertIn("no slot where both", self.tool.markdown(out))
+
+    def test_report_of_other_verdicts_is_refused(self):
+        with self.assertRaisesRegex(ValueError, "not written for these verdicts"):
+            self.verdict([5.] * 10, [1.] * 10, sources=[dict(config_sha256="other", planned=30, validated=30,
+                                                             verdicts="summary.json+summary_full.json")])
+
+
 class AnalysisTests(unittest.TestCase):
     def test_report_on_labeled_fixture(self):
         with tempfile.TemporaryDirectory() as folder:

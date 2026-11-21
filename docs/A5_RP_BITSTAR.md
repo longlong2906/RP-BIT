@@ -3,7 +3,8 @@
 A5 là A4 (`docs/A4_RP_BITSTAR.md`) được làm nhanh hơn mà không đổi hàm mục tiêu, các cận dưới, sampler, miền an
 toàn hay bước tinh chỉnh. Tài liệu này mô tả bốn cơ chế thêm vào, lập luận đúng đắn, cách chạy và kết quả trên các
 bản đồ dev **đã thấy**. Kế hoạch được duyệt ngày 21/11/2026. Thiết kế của C3 và C4 đã đổi sau probe 1 (mục 6.2);
-người dùng chấp nhận thay đổi đó cùng ngày. A5 chưa có held-out nào.
+người dùng chấp nhận thay đổi đó cùng ngày. Held-out trên Kaggle đã được đăng ký ngày 22/11/2026 (mục 6.10) nhưng
+chưa chạy.
 
 ## 1. Mục tiêu và những gì giữ nguyên
 
@@ -450,10 +451,34 @@ Người dùng duyệt hai thay đổi vào mã dùng chung ngày 21/11/2026. C�
 - Số "tiền xử lý" của SEM-RRT* và A4 trong mọi báo cáo trước ngày này còn gồm các khoản khởi động nói trên, nên không
   so trực tiếp được với các lượt sau.
 
+### 6.10 Đăng ký held-out trên Kaggle (22/11/2026, chưa chạy)
+
+Biên bản: `logs/a4_rpbit_a5_heldout_20261122/registration.json`, cấu hình `configs/a4_rpbitstar_v1_a5_kaggle.json`.
+Quyết định của người dùng: giữ A5 đầy đủ làm nhánh chính, trần 20 s, chạy trên Kaggle, Time là thời gian solve còn
+phần trước solve chỉ báo kèm; giữ nhánh C1 + C2; tiêu chí 1 không đòi PSR 250/250; giữ ngưỡng tốc độ 5.
+
+| Mục | Nội dung |
+|---|---|
+| Nhánh | `sem_native`, `a4_rpbit_l33_m20`, `a5_rpbit_l33_w4000` (chính), `a5_rpbit_l33_w4000_eager` (C1 + C2) |
+| Đầu vào | 5 họ × seed bản đồ 111001–111010 × planner seed 1116001–1116005 = 250 slot; chưa dùng ở đâu trước đó |
+| Pha | `smoke_a5_kaggle` 28, `gate_a5_kaggle` 20 (seed 51001), `heldout_a5_kaggle` 1 000 lượt |
+| Thực thi | Kaggle, 1 làn trên CPU 0, mỗi lúc một lượt; validate trên 4 lõi |
+
+Bốn tiêu chí, chấm trên nhánh chính bằng `tools/analyze_rp_bit.py` và `tools/analyze_rp_bit_a5.py`:
+
+1. Đúng đắn: đủ verdict, 0 lỗi correctness, nhánh chính được validate nghiêm ngặt. PSR chỉ báo, được chấm ở 2a.
+2. a) Đủ 10 tiêu chí mục 5.3 so với SEM-RRT*; b) so với A4: cận trên 95% của ΔJ₃₀ gộp tương đối ≤ +0,1%.
+3. Tốc độ: Time trung bình SEM / A5 ≥ 5 và A5 nhanh hơn ở ≥ 90% số cặp (chỉ thời gian solve).
+
+`tools/analyze_rp_bit_a5.py` chạy lại trên dev lần 3 cho đúng mọi số của script chẩn đoán dev (0 sai khác) và kết luận
+"đạt cả bốn". Biên bản ghi hash của cấu hình, từng pha và 26 file nguồn; bộ điều khiển Kaggle (`kaggle_a4_rpbit/a5.py`)
+từ chối chạy nếu một hash lệch. Dự đoán ghi trước: tiêu chí 3 có thể sát ngưỡng, vì trên các held-out Kaggle trước tỉ
+số SEM / A4 thấp hơn dev (1,57 và 1,49 so với 1,90); nếu A5 hụt cùng tỉ lệ, tỉ số khoảng 5,1–5,2.
+
 ## 7. Hạn chế đã biết
 
-- **Chưa có held-out.** Mọi số ở mục 6 đến từ bản đồ đã thấy, và C3, C4 được thiết kế lại sau khi xem probe trên chính
-  các bản đồ đó.
+- **Chưa có kết quả held-out** (đã đăng ký, mục 6.10). Mọi số ở mục 6 đến từ bản đồ đã thấy, và C3, C4 được thiết
+  kế lại sau khi xem probe trên chính các bản đồ đó.
 - **Mục tiêu 7–10 lần không đạt.** Tỉ số gộp là 6,28; hai họ dưới 5 (`traversable_hill` 3,91, `narrow_passage` 4,58).
 - **Tỉ số 6,28 chỉ tính thời gian solve.** Tính cả phần trước đồng hồ solve, tỉ số là 5,26 sau mục 6.8 và 6.9; ở
   lượt dev đầu là 3,28. Phần trước solve vẫn gồm băm file để kiểm toàn vẹn ở cả hai pipeline.
@@ -466,4 +491,3 @@ Người dùng duyệt hai thay đổi vào mã dùng chung ngày 21/11/2026. C�
 - **Góc gấp:** 5 trên 75 đường, so với 1 của A4 chính và 229 của SEM.
 - **Phần còn lại của Time:** `rpRefine` 31%, dựng potential 13%. Muốn nhanh hơn nữa với W = 4 000 cần cơ chế mới,
   nằm ngoài kế hoạch đã duyệt.
-- Chưa có biên bản đăng ký, gói `dist/`, commit hay push cho A5.
