@@ -4,7 +4,9 @@ A5 là A4 (`docs/A4_RP_BITSTAR.md`) được làm nhanh hơn mà không đổi h
 toàn hay bước tinh chỉnh. Tài liệu này mô tả bốn cơ chế thêm vào, lập luận đúng đắn, cách chạy và kết quả trên các
 bản đồ dev **đã thấy**. Kế hoạch được duyệt ngày 21/11/2026. Thiết kế của C3 và C4 đã đổi sau probe 1 (mục 6.2);
 người dùng chấp nhận thay đổi đó cùng ngày. Held-out trên Kaggle được đăng ký ngày 22/11/2026 (mục 6.10) và đã chạy:
-nhánh chính đạt cả bốn tiêu chí, SEM / A5 = 6,20 (mục 6.11).
+nhánh chính đạt cả bốn tiêu chí, SEM / A5 = 6,20 (mục 6.11). Held-out thứ hai, trần 10 s, chỉ A5 và SEM-RRT*,
+cũng đạt cả ba tiêu chí đã đăng ký: SEM / A5 = 5,33 (mục 6.14). Ablation giai thừa 2⁴ đã đăng ký (mục 6.13), chưa
+chạy.
 
 ## 1. Mục tiêu và những gì giữ nguyên
 
@@ -184,7 +186,7 @@ python -B tools/analyze_rp_bit.py --input results/<thư mục>/dev_a5 --output r
 Chạy `ctest` từ PowerShell. Trong Git Bash, `safe_length_unit` và `safe_length_oracle` nạp nhầm DLL runtime của Git
 và báo lỗi giả (đã gặp ngày 21/11/2026; hai test đó đạt khi chạy lại từ PowerShell).
 
-## 6. Kết quả: dev ngày 21/11/2026 trên bản đồ đã thấy (6.1–6.9), held-out Kaggle ngày 22/11/2026 (6.11)
+## 6. Kết quả: dev ngày 21/11/2026 trên bản đồ đã thấy (6.1–6.9), held-out Kaggle ngày 22/11/2026 (6.11, 6.14)
 
 Mọi số do oracle Python độc lập tính lại từ bản đồ và point cloud gốc. SEM-RRT* là bản C++ của dự án, tự dừng theo
 đúng luật của A4. Time là thời gian solve tới lúc tự dừng; với A4 và A5 nó gồm dựng potential, BIT* và tinh chỉnh.
@@ -576,7 +578,7 @@ gốc (100 lượt cho một bài toán).
 - Held-out này đã dùng: không chạy lại, không thêm seed, không gộp với các held-out trước; Time trên Kaggle không so
   với số đo trên Windows.
 
-### 6.12 Đăng ký held-out thứ hai trên Kaggle: chỉ A5 và SEM-RRT*, trần 10 s (22/11/2026; chưa chạy)
+### 6.12 Đăng ký held-out thứ hai trên Kaggle: chỉ A5 và SEM-RRT*, trần 10 s (22/11/2026; đã chạy, kết quả ở 6.14)
 
 Biên bản: `logs/a4_rpbit_a5_10s_20261122/registration.json`, cấu hình `configs/a4_rpbitstar_v1_a5_10s_kaggle.json`.
 Người dùng yêu cầu sau khi xem kết quả 6.11. Họ chọn trần 10 s, chỉ chạy hai phương pháp, dùng seed mới, và giữ
@@ -634,24 +636,123 @@ Chạy thử trên Windows (không phải bằng chứng):
 - Trên 5 map cổng, phần Shapley của C1, C2, C3, C4 là 43%, 24%, 17% và 16%.
 - C3 tiết kiệm nhiều hơn hẳn khi C1 tắt (tương tác C1 × C3 = +0,34 s), điều bậc thang ở 6.6 không thấy được.
 
+### 6.14 Kết quả held-out thứ hai trên Kaggle: A5 và SEM-RRT*, trần 10 s (22/11/2026)
+
+**Lượt chạy và kiểm chứng.**
+- Kernel `notebook4b027d69a4`, Xeon 2,2 GHz. Một phiên từ 14:16 đến 16:34 UTC ngày 22/11, khoảng 2,3 giờ; thu thập
+  held-out xong trong một đoạn.
+- Cổng trên Linux: 34/34 nhóm CTest. `smoke_a5_10s` thành công 13/14 (lượt hỏng là SEM-RRT* trên
+  `nodata_thin_obstacle`, như lần 20 s) và `gate_a5_10s` 10/10, mọi lượt A5 đều thành công, 0 lỗi correctness. SEM
+  Python và C++ trùng từng bit 10/10.
+- Held-out: 500/500 lượt, mỗi lượt bắt đầu đúng một lần, tất cả trên CPU 0 và không lúc nào hai lượt chạy cùng nhau;
+  0 lỗi correctness. Validate nghiêm ngặt mọi snapshot của nhánh chính: 250/250 đạt.
+- Biên bản thay đổi ghi lúc 14:48:23, trước lượt held-out đầu tiên (14:51:56). Hash của biên bản đăng ký
+  (`c4590467…`), của config, từng pha và binary Linux trùng nhau ở mọi chỗ ghi; binary Linux trùng với lần 20 s; 27 file
+  nguồn đã đăng ký trùng với cây làm việc.
+- Báo cáo dựng lại trên máy cục bộ bằng `tools/analyze_rp_bit.py` và `tools/analyze_rp_bit_a5_sem.py` trùng báo cáo
+  Kaggle ở mọi khóa, chỉ khác đường dẫn thư mục (`logs/a4_rpbit_a5_10s_20261122/heldout_receipt.json`).
+- Báo cáo đầy đủ ở `reports/a4_rpbit_a5_10s_kaggle_20261122/heldout_a5_10s/` (`REPORT.md`, `A5_VERDICT.md`,
+  `TABLE2_STYLE.md`); verdict ở `results/a4_rpbit_a5_10s_kaggle_20261122/`. Kho trial thô 2,10 GB chỉ nằm trong
+  `C:\Users\Long\Downloads\notebook4b027d69a4_output`.
+
+**Ba tiêu chí đã đăng ký** (nhánh chính `a5_rpbit_l33_w4000`; trong ngoặc là cận trên một phía 95%):
+
+| Tiêu chí | Số liệu | Kết luận |
+|---|---|---|
+| 1. Đúng đắn | đủ 500 verdict, 0 lỗi correctness, validate nghiêm ngặt 250/250, PSR 250/250 | đạt |
+| 2a. Mười tiêu chí mục 5.3 so với SEM-RRT* | 10/10; `pri_target_lower`: PRI gộp −0,45% [−0,13%] | đạt |
+| 3. Tốc độ | SEM / A5 = 5,354 / 1,004 = **5,33** (ngưỡng 5); A5 nhanh hơn ở 247/248 cặp (ngưỡng 90%) | đạt |
+
+**Thời gian** (giây, trung bình trên các lượt có đường an toàn: SEM 248, A5 250; tỉ số tính trên 248 cặp):
+
+| Nhánh | Solve | Trước solve | Tổng | SEM / nhánh (solve) | SEM / nhánh (tổng) | Nhanh hơn SEM (solve) |
+|---|---:|---:|---:|---:|---:|---:|
+| `sem_native` | 5,354 | 0,263 | 5,617 | — | — | — |
+| **`a5_rpbit_l33_w4000`** | **1,000** | 0,275 | **1,275** | **5,33** | **4,39** | **247/248** |
+
+Theo họ, SEM / A5 (solve): `ridge_pass` 6,37; `rolling_terrain` 5,81; `narrow_passage` 5,27; `mixed_obstacles` 5,01;
+`traversable_hill` 4,24. A5 nhanh hơn SEM ở mọi cặp trừ một (`rolling_terrain_121008`, seed 1216003: 2,42 s so với
+1,44 s).
+
+**Bảng theo kiểu Table II của bài SEM-RRT*** (cách tính như ở 6.11):
+
+| Scenario | Method | PSR ↑ | APL[m] ↓ | PRI ↓ | STI ↓ | Time[ms] ↓ |
+|---|---|---:|---:|---:|---:|---:|
+| traversable_hill | SEM-RRT* | **100%** (50/50) | 33,64 ± 0,59 | 0,97 ± 0,48 | 0,007 ± 0,021 | 2842 ± 1246 |
+|  | A5 / RP-BIT* | **100%** (50/50) | **33,61 ± 0,57** | **0,97 ± 0,48** | **0,000 ± 0,000** | **671 ± 129** |
+| ridge_pass | SEM-RRT* | **100%** (50/50) | 37,92 ± 1,82 | 7,53 ± 2,09 | 0,098 ± 0,081 | 4431 ± 2600 |
+|  | A5 / RP-BIT* | **100%** (50/50) | **37,71 ± 1,85** | **7,50 ± 2,06** | **0,002 ± 0,007** | **696 ± 158** |
+| rolling_terrain | SEM-RRT* | **100%** (50/50) | 36,10 ± 0,48 | 4,77 ± 1,39 | 0,117 ± 0,081 | 6417 ± 2786 |
+|  | A5 / RP-BIT* | **100%** (50/50) | **35,85 ± 0,53** | **4,75 ± 1,39** | **0,004 ± 0,012** | **1105 ± 533** |
+| narrow_passage | SEM-RRT* | **100%** (50/50) | 36,77 ± 1,45 | **3,11 ± 0,78** | 0,074 ± 0,069 | 6216 ± 2868 |
+|  | A5 / RP-BIT* | **100%** (50/50) | **36,47 ± 1,39** | 3,11 ± 0,78 | **0,000 ± 0,000** | **1179 ± 478** |
+| mixed_obstacles | SEM-RRT* | 96% (48/50) | 44,97 ± 10,79 | **3,22 ± 1,63** | 0,084 ± 0,065 | 6927 ± 2747 |
+|  | A5 / RP-BIT* | **100%** (50/50) | **44,62 ± 10,85** | 3,32 ± 1,73 | **0,004 ± 0,008** | **1351 ± 499** |
+| Tất cả (250 lượt) | SEM-RRT* | 99,2% (248/250) | 37,82 ± 6,16 | **3,92 ± 2,59** | 0,076 ± 0,077 | 5354 ± 2943 |
+|  | A5 / RP-BIT* | **100%** (250/250) | **37,65 ± 6,22** | 3,93 ± 2,58 | **0,002 ± 0,008** | **1000 ± 484** |
+
+Hai lượt SEM-RRT* không thành công đều ở `mixed_obstacles_121008` (seed 1216002 và 1216003): đường cuối không an
+toàn vì thiếu điểm đỡ (`missing_sem_support`), không phải lỗi correctness. A5 có đường an toàn ở cả hai slot, với PRI
+6,68. Vì bảng tính trên mọi đường hợp lệ, hai đường này chỉ có ở hàng A5, nên PRI của A5 trên `mixed_obstacles` trông
+kém hơn (3,32 so với 3,22). Trên 48 cặp chung, A5 tốt hơn: 3,18 so với 3,22.
+
+**So với kỳ vọng ghi trước** (mục 6.12):
+- Tiêu chí 1 và 3 đạt như kỳ vọng. Tỉ số 5,33 thấp hơn mức dự đoán 5,6.
+- `pri_target_lower` đạt: A5 có PRI thấp hơn SEM ở 158/248 cặp.
+- SEM chạm trần 10 s ở 40/250 lượt: 14 `mixed_obstacles`, 11 `narrow_passage`, 11 `rolling_terrain`, 4
+  `ridge_pass`. Con số này nhiều hơn 29/250 tính trên bản đồ 20 s.
+- Theo họ, các dự đoán tính từ bản đồ 20 s không khớp: `ridge_pass` 6,37 (dự đoán 4,14), `traversable_hill` 4,24
+  (4,78), `mixed_obstacles` 5,01 (6,85). Các bản đồ mới khác bản đồ 20 s.
+- Tính cả phần trước solve, tỉ số là 4,39 (chỉ báo kèm, không chấm).
+
+**Đọc kết quả.**
+- **Tỉ số 5,33 là tỉ số của hai trung bình** (đúng tiêu chí đã đăng ký):
+  - tỉ số hai trung vị là 5,50;
+  - trung vị của tỉ số từng cặp là 5,17;
+  - trung bình nhân của tỉ số từng cặp là 4,91.
+- **SEM chạm trần ở 40 lượt, nên Time của SEM bị cắt.** Điều này làm tỉ số nghiêng về phía bất lợi cho A5.
+- **A5 dừng muộn hơn trên các bản đồ này:** trung bình 1,000 s, trung vị 0,83 s, lâu nhất 3,34 s (lượt 20 s: trung
+  bình 0,790 s, lâu nhất 2,7 s). SEM cũng chạy lâu hơn dù trần thấp hơn, nên các bản đồ mới khó hơn.
+- **Chất lượng so với SEM** (trên 248 cặp):
+  - APL −0,36% [−0,16%], PRI −0,45% [−0,13%], ΔJ₃₀ −1,06 [−0,83];
+  - STI gộp 0,0023 so với 0,0765;
+  - tổng số góc gấp 22 so với 718.
+- **Nghiệm mồi (C4):**
+  - Được công bố ở 235/250 lượt. 15 lượt nghiệm mồi không an toàn: 10 ở `ridge_pass`, 5 ở `mixed_obstacles`.
+  - Đường cuối chính là nghiệm mồi ở 39/250 lượt.
+  - BIT* cải thiện nghiệm mồi trung bình 0,066%, nhiều nhất 0,70%.
+  - Nghiệm đầu tiên công bố lúc 0,243 s (trung bình), cách J₃₀ cuối trung bình 0,16%. Chỉ 5 lượt có nghiệm đầu kém
+    hơn J₃₀ cuối quá 1%.
+- **Chia thời gian solve** (trung bình): setup 0,138 s, `rpRefine` 0,296 s (gồm tinh chỉnh nghiệm mồi), phần còn lại
+  0,567 s (BIT* và A* trên lưới của nghiệm mồi); riêng nghiệm mồi 0,099 s.
+- **Anytime:**
+  - Tại 0,1 s A5 chưa có đường, SEM có 250/250.
+  - Tại 0,25 s A5 có đường an toàn ở 166/250 lượt (lượt 20 s: 220/250); từ 0,5 s trở đi là 250/250.
+  - Trên các cặp đều có đường, J₃₀ của A5 thấp hơn SEM ở mọi checkpoint từ 0,25 s, cận trên đều âm.
+  - A5 đạt J₃₀ cuối của SEM ở 248/248 cặp, sau trung vị 0,238 s.
+- Held-out này đã dùng: không chạy lại, không thêm seed, không gộp với các held-out trước; Time trên Kaggle không so
+  với số đo trên Windows.
+
 ## 7. Hạn chế đã biết
 
 - **C3, C4 được thiết kế lại sau khi xem probe trên bản đồ dev.** Held-out (mục 6.11) là lần thử đầu tiên của chúng
-  trên bản đồ chưa thấy, và nhánh chính đạt cả bốn tiêu chí. Các số ở mục 6.1–6.9 vẫn chỉ từ bản đồ đã thấy.
-- **Mục tiêu 7–10 lần không đạt.** Tỉ số gộp là 6,28 trên dev và 6,20 trên held-out. Có hai họ dưới 5: trên dev là
-  `traversable_hill` 3,91 và `narrow_passage` 4,58; trên held-out là `traversable_hill` 4,78 và `ridge_pass` 4,14.
+  trên bản đồ chưa thấy, và nhánh chính đạt cả bốn tiêu chí. Held-out 10 s (mục 6.14) là lần thứ hai, cũng đạt. Các
+  số ở mục 6.1–6.9 vẫn chỉ từ bản đồ đã thấy.
+- **Mục tiêu 7–10 lần không đạt.** Tỉ số gộp là 6,28 trên dev, 6,20 trên held-out 20 s và 5,33 trên held-out 10 s.
+  Có họ dưới 5: trên dev là `traversable_hill` 3,91 và `narrow_passage` 4,58; trên held-out 20 s là
+  `traversable_hill` 4,78 và `ridge_pass` 4,14; trên held-out 10 s là `traversable_hill` 4,24.
 - **Tỉ số 6,28 chỉ tính thời gian solve.** Tính cả phần trước đồng hồ solve, tỉ số là 5,26 sau mục 6.8 và 6.9; ở
-  lượt dev đầu là 3,28. Phần trước solve vẫn gồm băm file để kiểm toàn vẹn ở cả hai pipeline. Trên held-out: 6,20 chỉ
-  tính solve, 4,95 tính cả phần trước solve.
-- **Tỉ số giữa hai trung bình chịu ảnh hưởng của các lượt SEM dài.** Trên held-out, tỉ số hai trung vị là 4,92 và
-  trung bình nhân của tỉ số từng cặp là 5,00 (mục 6.11).
+  lượt dev đầu là 3,28. Phần trước solve vẫn gồm băm file để kiểm toàn vẹn ở cả hai pipeline. Trên held-out 20 s:
+  6,20 chỉ tính solve, 4,95 tính cả phần trước solve; trên held-out 10 s: 5,33 và 4,39.
+- **Tỉ số giữa hai trung bình chịu ảnh hưởng của các lượt SEM dài.** Trên held-out 20 s, tỉ số hai trung vị là 4,92 và
+  trung bình nhân của tỉ số từng cặp là 5,00 (mục 6.11); trên held-out 10 s là 5,50 và 4,91 (mục 6.14).
 - **A4 với M = 5 đã đạt 0,448 s** nhờ cửa sổ ngắn 1 000 mẫu; A5 chính chỉ nhanh hơn nó ở 48/75 cặp. Lợi ích của A5
   chính là đạt thời gian đó mà vẫn giữ cửa sổ kiểm chứng 4 000 mẫu, đối xứng với luật dừng của SEM.
 - **C2 phụ thuộc địa hình.** Trên dev mọi cạnh đều được chứng nhận vì địa hình thoải so với trần 35°. Địa hình dốc
   hơn được lợi ít hơn; quyết định hợp lệ thì không đổi.
 - **Nghiệm mồi không phải là BIT\*.** Nó là A* trên lưới cộng `rpRefine`, được ghi nguồn riêng trong mọi bản ghi.
-  Nhánh `…_noseed` cho thấy BIT* tự đạt cùng J cuối khi không có nó. Trên held-out, đường cuối chính là nghiệm mồi ở
-  47/250 lượt, và BIT* cải thiện nghiệm mồi trung bình 0,048%.
+  Nhánh `…_noseed` cho thấy BIT* tự đạt cùng J cuối khi không có nó. Trên held-out 20 s, đường cuối chính là nghiệm
+  mồi ở 47/250 lượt, và BIT* cải thiện nghiệm mồi trung bình 0,048%; trên held-out 10 s là 39/250 lượt và 0,066%.
 - **Góc gấp:** 5 trên 75 đường, so với 1 của A4 chính và 229 của SEM.
 - **Phần còn lại của Time:** `rpRefine` 31%, dựng potential 13%. Muốn nhanh hơn nữa với W = 4 000 cần cơ chế mới,
   nằm ngoài kế hoạch đã duyệt.
