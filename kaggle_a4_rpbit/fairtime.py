@@ -5,7 +5,7 @@ trial at a time -> gates on non-held-out inputs (smoke_fairtime, gate_fairtime) 
 of SEM-RRT* on the gate maps -> record -> held-out collection in checkpointed chunks -> strict
 validation of the primary method -> reports -> stop. Registrations: EXPERIMENTS (fairtime:
 logs/a4_rpbit_fairtime_20261117, selfstop: logs/a4_rpbit_selfstop_20261117, putn: logs/a4_rpbit_putn_20261119,
-a5: logs/a4_rpbit_a5_heldout_20261122); a started trial is never retried.
+a5: logs/a4_rpbit_a5_heldout_20261122, a5_10s: logs/a4_rpbit_a5_10s_20261122); a started trial is never retried.
 """
 from __future__ import annotations
 
@@ -58,7 +58,15 @@ EXPERIMENTS = dict(
             heldout='heldout_a5_kaggle', gates=('smoke_a5_kaggle', 'gate_a5_kaggle'),
             identity_gate=dict(IDENTITY_GATE, phase='gate_a5_kaggle'), record='a5_rpbit_heldout_record_v1',
             module='kaggle_a4_rpbit.a5', ctest=REQUIRED_CTEST + ('rp_bit_a5_core', 'rp_bit_a5_worker', 'terrain_unit'),
-            a5_verdict=True, title='A5 so với SEM-RRT* C++ và A4, trần 20 s, Kaggle `heldout_a5_kaggle`'))
+            a5_verdict='tools/analyze_rp_bit_a5.py', title='A5 so với SEM-RRT* C++ và A4, trần 20 s, Kaggle `heldout_a5_kaggle`'),
+    # Only the A5 primary and the self-stop SEM-RRT*, 10 s cap, fresh seeds (logs/a4_rpbit_a5_10s_20261122); same
+    # sources and CTest set as a5; the verdict judges criteria 1, 2a and 3 (no A4, so no 2b).
+    a5_10s=dict(config=ROOT / 'configs/a4_rpbitstar_v1_a5_10s_kaggle.json',
+                registration=ROOT / 'logs/a4_rpbit_a5_10s_20261122/registration.json',
+                heldout='heldout_a5_10s', gates=('smoke_a5_10s', 'gate_a5_10s'),
+                identity_gate=dict(IDENTITY_GATE, phase='gate_a5_10s'), record='a5_rpbit_10s_heldout_record_v1',
+                module='kaggle_a4_rpbit.a5_10s', ctest=REQUIRED_CTEST + ('rp_bit_a5_core', 'rp_bit_a5_worker', 'terrain_unit'),
+                a5_verdict='tools/analyze_rp_bit_a5_sem.py', title='A5 so với SEM-RRT* C++, trần 10 s, Kaggle `heldout_a5_10s`'))
 
 
 def check_registration(config_path, config, experiment=EXPERIMENTS['fairtime']):
@@ -223,7 +231,7 @@ def pipeline(args, campaign, output, python, env, started, work_epoch, hard_dead
         run_logged('report_' + name, [python, '-B', 'tools/analyze_rp_bit.py', '--input', results / name,
                    '--output', reports / name, '--title', title], campaign, hard_deadline, env)
         if experiment.get('a5_verdict'):
-            run_logged('a5_verdict_' + name, [python, '-B', 'tools/analyze_rp_bit_a5.py', '--input', results / name,
+            run_logged('a5_verdict_' + name, [python, '-B', experiment['a5_verdict'], '--input', results / name,
                        '--report', reports / name, '--output', reports / name], campaign, hard_deadline, env)
     base.status(campaign, 'DONE', phase=HELDOUT, report=f'reports/{HELDOUT}/REPORT.md')
     checkpoint()

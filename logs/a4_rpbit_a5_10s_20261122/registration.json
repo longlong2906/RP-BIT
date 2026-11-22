@@ -1,0 +1,173 @@
+{
+ "record": "a5_rpbit_10s_heldout_registration_v1",
+ "protocol_id": "a4_rpbitstar_v1",
+ "created_utc": "2026-11-22T13:58:17.434746+00:00",
+ "purpose": "Registered before any trial of the held-out phase of this experiment. The Kaggle controller refuses a config or a listed source whose hash differs and writes heldout_deviation_record.json with the Linux identity before the first held-out trial.",
+ "user_decision_2026_11_22": "After the 20 s A5 held-out (heldout_a5_kaggle, kernel notebook48a9ab731c) was analyzed and committed, the user asked for a further held-out on Kaggle with a 10 s cap that runs only two algorithms: the full A5 (C1-C4) and SEM-RRT*. In the question dialog that followed, the user chose both proposed options: fresh seeds (map 121001-121010 x planner 1216001-1216005) instead of reusing 111001-111010, and criteria 1, 2a and 3 of the 20 s registration with unchanged thresholds; 2b (J30 against A4) is dropped because A4 is not run. Proposed by Claude and taken over from the 20 s registration: one timed lane on CPU 0, validation on four cores, the same gates (smoke at 2 s, gate map seed 51001 at the 10 s cap, SEM Python/C++ bit identity) and the same 34 CTest groups.",
+ "question": "On fresh maps, on one Kaggle core, with both methods stopping on their own convergence under a 10 s cap, does the primary A5 arm meet (1) correctness, (2a) the ten checks of plan 5.3 against the self-stopping C++ SEM-RRT*, and (3) speed: mean SEM-RRT* solve time / mean A5 solve time >= 5 with A5 faster in >= 90% of the pairs?",
+ "relation_to_previous": {
+  "heldout_kaggle": "Spent (2026-11-16): A4 vs Python SEM-RRT* with a fixed 7425 iterations; never pooled.",
+  "heldout_fairtime": "Spent (2026-11-17, kernel notebook148efabeb1): A4 vs C++ SEM-RRT* with the full 20 s; never pooled.",
+  "heldout_selfstop": "Spent (2026-11-17, kernel notebook440bf3ea19): A4 and self-stopping C++ SEM-RRT*, 20 s cap; never pooled.",
+  "heldout_putn": "Spent (2026-11-19, kernel notebook11a18abc92): A4, SEM-RRT*, two PUTN arms, 10 s cap; never pooled.",
+  "heldout_a5_kaggle": "Spent (2026-11-22, kernel notebook48a9ab731c): SEM-RRT*, A4, the A5 primary and its C1 + C2 arm, 20 s cap, seeds 111001-111010 x 1116001-1116005; all four criteria passed (SEM/A5 solve 6.20, A5 faster in 249/250 pairs). Seen before this registration (the 10 s cap was chosen after it); never pooled with this run.",
+  "factorial": "The rpRefine factorial held-out seeds (91001-91010 x 916001-916005) stay reserved and are not used here.",
+  "nothing_tuned": "No method parameter, threshold or analysis rule changed since the 20 s registration. Changes: the cap (20 -> 10 s), the arms (A4 and the C1 + C2 arm dropped), the seeds, the anytime checkpoints (20 s dropped) and the verdict tool (tools/analyze_rp_bit_a5_sem.py: criteria 1, 2a and 3 with the helpers and thresholds of tools/analyze_rp_bit_a5.py)."
+ },
+ "config": "configs/a4_rpbitstar_v1_a5_10s_kaggle.json",
+ "config_sha256": "1d486927816bc7101e845eaa8bbcc58fcf1baa1a6bc43940e705b2e5bf149611",
+ "phase_config_sha256": {
+  "smoke_a5_10s": "bd8714ad2a8af0e536db510c381f06c5f8d34997973714360f6a34197c77688b",
+  "gate_a5_10s": "548c31e90aa462aa5ca83256efcee5e521f949e89ec4087fd6bb43011891844a",
+  "heldout_a5_10s": "d7961b313b2886c3191d78ab7c1b3c206ceb091702c1773b8240ca5bcd582abb"
+ },
+ "gates": [
+  "smoke_a5_10s",
+  "gate_a5_10s"
+ ],
+ "heldout_phase": "heldout_a5_10s",
+ "planned_trials": {
+  "smoke_a5_10s": 14,
+  "gate_a5_10s": 10,
+  "heldout_a5_10s": 500
+ },
+ "base_commit": "899e107",
+ "base_commit_note": "HEAD when registered; the 26 sources frozen by the 20 s registration are unchanged since a445226/245f712. source_sha256 is authoritative.",
+ "source_sha256": {
+  "src/RpBitA5.cpp": "250736ddfdd5d3cd90c8dc73f31649b9dff1a03300e66d3236ff902d30d2c422",
+  "include/terrain25d/RpBitA5.hpp": "31ace493975e20ad006edbca0b68b1a9abb2629df58e84dab0ff0351b9dede1a",
+  "apps/RpBitA5Worker.inc": "486889425a1e1f165c01a07c4562043f81497dc06080b75a82146a5db5d823dc",
+  "cmake/RpBitA5Targets.cmake": "e3227f559ba77a37120bac8da0df1903ba26d2f43ed766cd3a8c59375c17d469",
+  "src/RpBit.cpp": "d2eedd2da8622508c36321bfc4e83d1f63e7e85104aaf2a63bf26d10251b5eee",
+  "include/terrain25d/RpBit.hpp": "d597bf5f62da35ae46f160e2d7395af2099d0259e2f493eac125c92e9967095d",
+  "apps/RpBitWorker.inc": "27a93aa4bfe85d92daaf4609c1b226400f7e37d113d18fd2712e7ac480408b3d",
+  "cmake/RpBitTargets.cmake": "ea3864fc5f545db4e271ec95191349de077f5cf9e6fef205542708a38d10b482",
+  "src/SemRrtStar.cpp": "0abfd5ca1341fd13d5edeb39fdd0a47c1e0939055442e664bde758ce11a527c2",
+  "src/SemRrtStarC.cpp": "9abed8948096804914059ebb1f38dfd3dc04cb6cd5280891beaacee4f4b55512",
+  "include/terrain25d/SemRrtStar.hpp": "01c4a5f6f170b6078ef438b483cc3bfb99d869f4e3526ef6883683e3ac0a776b",
+  "include/terrain25d/SemRrtStarC.h": "bf6850ede96215758f8cc05ebed16f68b19a4f5cfb0b32b2c466f849b5bf0c4b",
+  "cmake/SemCppTargets.cmake": "cd13ba2c675f2d28e687d63b023d043ef2789b381d8431572ad4b8ffb4f28320",
+  "apps/terrain_benchmark.cpp": "36dc8a775594c546ddd4454710a5d765c3b617e48f52e479179187fbccb912c8",
+  "src/Terrain.cpp": "86f70e971fd95ab3d4ae91a7a0194645b06cd8663483acb450379872d2216426",
+  "include/terrain25d/Terrain.hpp": "23827e0aa885b63ca5b7e3e95a0ebd5c3a1c8aec6b3ffbd248ec3cd3a161f64f",
+  "CMakeLists.txt": "13c3c809f2fb9d57bd81f99649c9269d622032a473b40a909a5d3d70d697e3db",
+  "tools/rp_bit_protocol.py": "5c0089c46d421e9837d1ce6a659ee7a1d308a788fcd5d0765e835c1dde530dce",
+  "tools/run_rp_bit.py": "f98e17b934a1e1e59cb23a26f42da92951986e4fd2c6a45a5f0e655c89aa08c6",
+  "tools/run_sem_exposure.py": "f4698a39b7e4de94be5495934bf0085d6b8ed446737668c63022a46b8301a57d",
+  "tools/native_paper_worker.py": "dd3839befdaeb6c69afe2fd4b247996df4487fd37501e945d9c15b52438d25ba",
+  "tools/sem_native_cpp.py": "8999e16b7ef4ff467935f631421ec97e2c1b0366e3edc9f5f66b72dc5fca976d",
+  "tools/rp_bit_a5_field.py": "c4407220247e9e6e48048965225085a0c04cdf4137786699299c93bd56f98377",
+  "tools/rp_bit_validation.py": "9f81d2d259c8b98ccab94eac23f0b31a443306505fc557c94ccbcef3194d53d3",
+  "tools/analyze_rp_bit.py": "3c9d977423c1b698c39adb346e5d31461b0942f6f60bede6ade6962a088e1d99",
+  "tools/analyze_rp_bit_a5.py": "7125d1fdfd24ff41e99c5c90aabe8420b803825dca48b7646b6c8144036fea67",
+  "tools/analyze_rp_bit_a5_sem.py": "da186571ae2f25aef788cdfb4d984bef6fa33cff77f0a1e6668e4e4911bee07a"
+ },
+ "methods": {
+  "sem_native": "SEM-RRT* project reconstruction, C++ search engine (Python/scipy native raster as preprocessing), stops on convergence by the A4 rule (as heldout_selfstop and heldout_a5_kaggle), 10 s wall-clock cap.",
+  "a5_rpbit_l33_w4000": "A5 primary, unchanged from heldout_a5_kaggle: A4 with C1 batch_growth (sample-counted window of 4000 samples on batches 500/500/1000/2000), C2 fast_validity (slope-envelope shortcut, decision-identical to SafetyPolicy), C3 lazy_refine and C4 seed (lattice seed refined by rpRefine, sampling bounded by the published J); lambda 33, eps 0.1%, refinement parameters of A4; 10 s cap."
+ },
+ "convergence_stop": {
+  "rule": {
+   "relative_eps": 0.001,
+   "window": 4000
+  },
+  "sem": "At every iteration boundary after the first solution: stop once 4000 iterations pass without a >= 0.1% relative drop of the published native cost; otherwise the 10 s cap ends the run (termination TIME_BUDGET).",
+  "a5": "Same test counted in random samples (4000) at batch boundaries; batch sizes 500/500/1000/2000 after the first solution.",
+  "validation": "tools/rp_bit_validation.py: the A5 checks (requested/effective options, batch schedule, stop, seed event, heuristic bound) and the SEM stop checks are correctness errors."
+ },
+ "inputs": {
+  "families": [
+   "traversable_hill",
+   "ridge_pass",
+   "rolling_terrain",
+   "narrow_passage",
+   "mixed_obstacles"
+  ],
+  "map_seeds": [
+   121001,
+   121002,
+   121003,
+   121004,
+   121005,
+   121006,
+   121007,
+   121008,
+   121009,
+   121010
+  ],
+  "planner_seeds": [
+   1216001,
+   1216002,
+   1216003,
+   1216004,
+   1216005
+  ],
+  "pairs": 250,
+  "novelty": "map seeds 121001-121010 and planner seeds 1216001-1216005 appear in no earlier config, tool, test, document, log, report or result as a seed (whole work tree searched 2026-11-22 with word boundaries: 1216001-1216005 occur only in this experiment's files; 121001-121010 occur only as unrelated byte counts, edge/heuristic counters and timestamp fractions). tests/test_rp_bit_tooling.py A5TenSecondConfigTests checks every config."
+ },
+ "timing_protocol": [
+  "Kaggle CPU session (no accelerator). execution.cores [0]: one timed lane, one trial at a time, so the two methods never run concurrently.",
+  "One fresh process per trial, pinned to its lane core, one thread.",
+  "The two methods of a (map, planner seed) block run back to back on the same core; the method order rotates between blocks.",
+  "Time (judged) = solve_time_s: A5 from before potential construction to its own stop (potential, seed, BIT*, refinement); SEM-RRT* from planner construction to its own stop or the 10 s cap.",
+  "Time before the solve clock (reported, not judged) = preprocessing_s + field_build_s: input loading in the worker (for SEM-RRT* also its native raster) plus, for A5, the SEM field built before the worker (binary container). Library imports and host identification happen before these clocks, as in heldout_a5_kaggle.",
+  "Validation is not timed and runs only after the collection of a phase is complete, on execution.validation_cores [0, 1, 2, 3]."
+ ],
+ "gates_before_heldout": [
+  "The controller refuses to start if the config, a phase config or any file of source_sha256 differs from this registration.",
+  "Linux build of the delivered sources; the 34 CTest groups of heldout_a5_kaggle (31 of fairtime/selfstop plus rp_bit_a5_core, rp_bit_a5_worker and terrain_unit).",
+  "smoke_a5_10s: 7 smoke fixtures, 2 s, both methods; no correctness error, every A5 trial successful, strict validation.",
+  "gate_a5_10s: the 5 families at map seed 51001, planner seed 516001, 10 s cap, both methods; same conditions.",
+  "sem_cpp_bit_identity: on the 5 gate_a5_10s maps, planner seeds 516001 and 516002, Python and C++ SEM-RRT* (stop off) each run 7425 iterations and must be identical (10/10) on the Linux runtime of the campaign.",
+  "A SEM-RRT* planner failure in a gate is a result, not a gate failure; a correctness error of either method is.",
+  "Any failed gate stops the run before the held-out; the cause is reported, nothing is retuned."
+ ],
+ "primary_criteria": {
+  "source": "A5 plan section 3 (approved 2026-11-21) as applied by the 20 s registration (logs/a4_rpbit_a5_heldout_20261122/registration.json), thresholds unchanged; 2b is not judged because A4 is not run (user decision of 2026-11-22). All three judged on the primary arm.",
+  "tools": {
+   "tools/analyze_rp_bit.py": "report.json: ten checks (criteria) against sem_native",
+   "tools/analyze_rp_bit_a5_sem.py": "a5_verdict.json / A5_VERDICT.md: applies the thresholds below"
+  },
+  "items": {
+   "1_correctness": "Every planned trial has a verdict; no correctness error in either method (fast validation of every trial, strict per-snapshot validation of the primary); the primary was strictly validated. A heuristic bound violation is a correctness error. The primary's PSR is reported here but not required to be 250/250: PSR is judged by psr_pooled and psr_every_family of 2a, i.e. A5 >= SEM-RRT*.",
+   "2a_ten_checks_vs_sem": "The ten checks of plan 5.3, primary minus sem_native: psr_pooled, psr_every_family, sti_lower, time_lower, j_sem_mean_lower, j_sem_upper95_below_zero, apl_noninferior, pri_noninferior (upper 95% bound of the pooled relative difference < +1%), apl_target_lower, pri_target_lower (mean paired difference < 0); hierarchical bootstrap map -> seed, 20000 replicates, seed 61016. All ten must pass.",
+   "3_speed_vs_sem": "On the slots where both end on a final safe path: mean sem_native solve_time_s / mean primary solve_time_s >= 5, and the primary is faster in >= 90% of those pairs. Both bounds inclusive. A SEM-RRT* run ended by the 10 s cap counts with its capped time."
+  },
+  "not_judged": {
+   "2b_j30_vs_a4": "A4 is not run in this experiment."
+  },
+  "pairing": "Paired metrics use the slots where both methods end with a final safe path; PSR counts every slot.",
+  "verdict": "The A5 claim at the 10 s cap on unseen maps holds only if all three pass. Each item is reported separately; no item is dropped, added or re-thresholded after any held-out result is seen."
+ },
+ "secondary_descriptive": [
+  "Time before the solve clock per method, and the SEM/A5 ratio with it added (pooled and per family): reported, not judged.",
+  "SEM/A5 solve-time ratio per family.",
+  "Termination reasons and stop times of both methods, in particular the number of SEM-RRT* runs ended by the 10 s cap; anytime table at T in {0.1, 0.25, 0.5, 1, 2, 5, 10} s.",
+  "From the raw archive: A5 seed status by family, runs whose final path is the seed, first-publication quality, time split (setup, seed, refinement)."
+ ],
+ "stated_expectation": "From heldout_a5_kaggle (20 s cap, seeds 111001-111010): A5 never ran longer than 2.7 s, so the 10 s cap does not change A5; 29/250 SEM-RRT* runs went past 10 s (15 mixed_obstacles, 11 rolling_terrain, 3 narrow_passage). Capping those runs at 10 s lowers SEM/A5 on the same data from 6.20 to 5.62 (A5 still faster in 249/250 pairs); per family traversable_hill 4.78 and ridge_pass 4.14 are unchanged, narrow_passage 5.16 -> 4.94, rolling_terrain 7.73 -> 6.83, mixed_obstacles 8.26 -> 6.85. The quality of SEM-RRT* at 10 s on those data equals its 20 s quality (J30 167.567 at both; A5 minus SEM at 10 s: dJ30 -0.92, upper bound -0.78; APL upper relative bound -0.38%; PRI +0.20%). Expected here: 1 passes; 3 passes but closer to the bound than at 20 s (about 5.6 if the maps behave like 111001-111010; maps with fewer long SEM runs lower it). Within 2a, pri_target_lower is the check at risk: at 20 s the pooled PRI difference was -0.03% with a 95% interval of [-0.31%, +0.26%] and A5 lower in 147/250 pairs, so its sign on fresh maps is close to a coin flip; the other nine checks had clear margins. Every outcome is reported.",
+ "rules": [
+  "Started trials are never retried; no seeds are added; criteria and analysis are not changed after any held-out result is seen.",
+  "Strict per-snapshot validation of the primary method; fast independent validation of every trial (including the stop rules).",
+  "Results are reported as measured on Kaggle Linux; their Time is not compared with Windows numbers and not pooled with other held-outs."
+ ],
+ "deviations_from_a4_lock": [
+  "A4 core files (src/RpBit.cpp, include/terrain25d/RpBit.hpp, apps/RpBitWorker.inc, cmake/RpBitTargets.cmake) are unchanged.",
+  "apps/terrain_benchmark.cpp: dispatch lines of the rpRefine replay worker (factorial) and of the A5 worker; A4 output byte-identical on dev.",
+  "src/Terrain.cpp: Terrain::load parses in memory (std::from_chars, std::stod fallback); values and accepted inputs unchanged on all 167 maps.",
+  "Tooling: rp_bit_protocol.py, run_rp_bit.py, rp_bit_validation.py, run_sem_exposure.py, native_paper_worker.py and analyze_rp_bit.py changed after the lock (A5 kind, binary field, start-up outside the clocks); hashes in source_sha256."
+ ],
+ "delivery_plan": [
+  "kaggle_a4_rpbit: EXPERIMENTS['a5_10s'] with this registration and the 34 CTest groups, module kaggle_a4_rpbit/a5_10s.py; the reporting step runs the verdict tool named by the experiment (tools/analyze_rp_bit_a5_sem.py here, tools/analyze_rp_bit_a5.py for a5).",
+  "Packager profile 'a5_10s' and bundle tests; Windows rehearsal of smoke and gate before delivery; delivery audit."
+ ],
+ "limitations": [
+  "The 10 s cap ends some SEM-RRT* runs before they converge (29/250 on the 20 s held-out maps): their Time is the cap, which lowers SEM's mean time (against A5 in criterion 3), and their paths are not converged (for A5 in the quality checks; on the 20 s held-out maps the SEM quality at 10 s and 20 s was the same).",
+  "C3 and C4 were redesigned after seeing the dev maps; heldout_a5_kaggle was their first test on unseen maps, this is the second.",
+  "The A5 seed is A* on the SEM cell lattice plus rpRefine, not BIT*; its share of final paths is reported.",
+  "SEM-RRT* is a project reconstruction, not the authors' code.",
+  "Shared cloud VM: background load can add timing noise; the two methods of a block share the core and rotate order.",
+  "The stop window is matched in samples/iterations, not in time or work."
+ ],
+ "revision": 1
+}

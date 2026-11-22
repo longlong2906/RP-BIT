@@ -1042,6 +1042,111 @@ class A5VerdictTests(unittest.TestCase):
                                                              verdicts="summary.json+summary_full.json")])
 
 
+class A5TenSecondConfigTests(unittest.TestCase):
+    """A5 against SEM-RRT* only on Kaggle: the two arms of the 20 s held-out unchanged, 10 s cap, fresh seeds."""
+    ARMS = ["sem_native", "a5_rpbit_l33_w4000"]
+    PATH = ROOT / "configs/a4_rpbitstar_v1_a5_10s_kaggle.json"
+
+    def setUp(self):
+        self.config = protocol.load_config(self.PATH)
+
+    def test_arms_budget_and_fresh_seeds(self):
+        earlier = protocol.load_config(protocol.A5_KAGGLE_CONFIG)
+        self.assertEqual(self.config["methods"], {name: earlier["methods"][name] for name in self.ARMS})
+        for key in ("protocol_id", "schema_version", "safety", "execution"):
+            self.assertEqual(self.config[key], earlier[key], key)
+        # No contrast: A4 and the C1 + C2 arm are not run; the anytime checkpoints stop at the 10 s cap.
+        analysis_10s = {key: value for key, value in earlier["analysis"].items() if key != "contrasts"}
+        self.assertEqual(self.config["analysis"], dict(analysis_10s, checkpoints_s=[.1, .25, .5, 1., 2., 5., 10.]))
+        phases = self.config["phases"]
+        self.assertEqual(list(phases), ["smoke_a5_10s", "gate_a5_10s", "heldout_a5_10s"])
+        for name, phase in phases.items():
+            self.assertEqual((phase["methods"], phase["primary_method"]), (self.ARMS, "a5_rpbit_l33_w4000"), name)
+        without = lambda phase: {key: value for key, value in phase.items() if key != "methods"}
+        self.assertEqual(without(phases["smoke_a5_10s"]), without(earlier["phases"]["smoke_a5_kaggle"]))
+        gate, held = phases["gate_a5_10s"], phases["heldout_a5_10s"]
+        self.assertEqual((gate["maps"], gate["map_seeds"], gate["planner_seeds"], gate["planning_budget_s"]),
+                         ("generate", [51001], [516001], 10.))
+        self.assertEqual((held["maps"], held["planning_budget_s"]), ("generate", 10.))
+        fresh = set(held["map_seeds"]) | set(held["planner_seeds"])
+        self.assertEqual(fresh, set(range(121001, 121011)) | set(range(1216001, 1216006)))
+        self.assertEqual([len(protocol.inventory(self.config, name)) for name in phases], [14, 10, 500])
+        for path in sorted((ROOT / "configs").glob("a4_rpbitstar_v1*.json")):
+            config = protocol.load_config(path)
+            for name, phase in config["phases"].items():
+                if (path, name) != (self.PATH, "heldout_a5_10s"):
+                    self.assertFalse(fresh & (set(phase["map_seeds"]) | set(phase["planner_seeds"])), (path.name, name))
+
+    def test_held_out_needs_the_flag(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with self.assertRaisesRegex(SystemExit, "held-out requires"):
+                runner.run(Path(folder) / "out", "heldout_a5_10s", "missing", "missing", config_path=self.PATH)
+            self.assertFalse((Path(folder) / "out").exists())
+
+
+class A5SemVerdictTests(unittest.TestCase):
+    """tools/analyze_rp_bit_a5_sem.py: criteria 1, 2a and 3 of the A5 plan when only SEM-RRT* runs beside A5."""
+    ARMS = ("sem_native", "a5_rpbit_l33_w4000")
+
+    def setUp(self):
+        import analyze_rp_bit_a5_sem
+        self.tool = analyze_rp_bit_a5_sem
+        self.folder = tempfile.TemporaryDirectory()
+        self.addCleanup(self.folder.cleanup)
+
+    def verdict(self, sem, a5, *, unsafe=(), strict=True, checks=True, arms=ARMS):
+        """Slot i: SEM-RRT* takes sem[i] s and A5 a5[i] s; A5 is unsafe in the slots of `unsafe`."""
+        phase = Path(self.folder.name) / f"phase{len(list(Path(self.folder.name).iterdir()))}"
+        phase.mkdir()
+        config = protocol.load_config(A5TenSecondConfigTests.PATH)
+        config["methods"]["a4_rpbit_l33_m20"] = protocol.load_config(protocol.A5_KAGGLE_CONFIG)["methods"]["a4_rpbit_l33_m20"]
+        config["phases"] = dict(p=dict(config["phases"]["gate_a5_10s"], methods=list(arms)))
+        primary = "a5_rpbit_l33_w4000"
+        entries, fast, full = [], [], []
+        for slot, (sem_time, a5_time) in enumerate(zip(sem, a5)):
+            for method in arms:
+                trial = f"m{slot}__s1__{method}"
+                entries.append(dict(trial_id=trial, map_id=f"m{slot}", family="ridge_pass", planner_seed=1, method=method))
+                row = dict(trial_id=trial, success=not (method == primary and slot in unsafe),
+                           solve_time_s=a5_time if method == primary else sem_time if method == arms[0] else 1.,
+                           preprocessing_s=.1, field_build_s=.2, final_j_sem=100., termination_reason="CONVERGED_NO_IMPROVEMENT",
+                           full_validation=False)
+                fast.append(row)
+                if method == primary:
+                    full.append(dict(row, full_validation=True))
+        manifest = dict(protocol_id=protocol.PROTOCOL_ID, phase="p", config=config, entries=entries,
+                        config_sha256="c", binary_sha256="b")
+        (phase / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+        (phase / "summary.json").write_text(json.dumps(dict(rows=fast)), encoding="utf-8")
+        if strict:
+            (phase / "summary_full.json").write_text(json.dumps(dict(rows=full)), encoding="utf-8")
+        report = dict(sources=analysis.load([phase])[3], complete=True, correctness_failures=0,
+                      criteria=[dict(method=primary, **{key: checks for key in self.tool.CHECKS})])
+        out = self.tool.build(phase, report)
+        return {key: value["pass"] for key, value in out["criteria"].items()}, out
+
+    def test_three_criteria_with_the_registered_thresholds(self):
+        passed, out = self.verdict([5.] * 10, [1.] * 10)
+        self.assertEqual(set(passed), {"1_correctness", "2a_ten_checks_vs_sem", "3_speed_vs_sem"})
+        self.assertTrue(all(passed.values()) and out["all_pass"], passed)
+        self.assertIn("2b_j30_vs_a4", out["not_judged"])
+        self.assertFalse(self.verdict([5.] * 10, [1.000001] * 10)[0]["3_speed_vs_sem"])
+        self.assertFalse(self.verdict([6.25] * 8 + [.5] * 2, [1.] * 10)[0]["3_speed_vs_sem"])   # ratio 5.1, 8/10 faster
+        self.assertTrue(self.verdict([5.5] * 9 + [.5], [1.] * 10)[0]["3_speed_vs_sem"])        # ratio 5, 9/10 faster
+        self.assertFalse(self.verdict([5.] * 10, [1.] * 10, checks=False)[0]["2a_ten_checks_vs_sem"])
+        self.assertFalse(self.verdict([5.] * 10, [1.] * 10, strict=False)[0]["1_correctness"])
+        passed, out = self.verdict([5.] * 10, [1.] * 10, unsafe=(3,))
+        self.assertEqual((passed["1_correctness"], out["criteria"]["3_speed_vs_sem"]["pairs"]), (True, 9))
+        self.assertAlmostEqual(out["methods"]["a5_rpbit_l33_w4000"]["speed_vs_sem"]["with_before_solve"]["ratio_of_means"], 5.3 / 1.3)
+        text = self.tool.markdown(out)
+        self.assertIn("Cả ba:", text)
+        self.assertIn("không chấm vì pha này không chạy A4", text)
+
+    def test_only_sem_and_a5(self):
+        with self.assertRaisesRegex(ValueError, "exactly SEM-RRT\\* and an A5 primary arm"):
+            self.verdict([5.] * 10, [1.] * 10, arms=("sem_native", "a4_rpbit_l33_m20", "a5_rpbit_l33_w4000"))
+
+
 class AnalysisTests(unittest.TestCase):
     def test_report_on_labeled_fixture(self):
         with tempfile.TemporaryDirectory() as folder:

@@ -1,0 +1,45 @@
+{
+  "protocol_id": "a4_rpbitstar_v1",
+  "schema_version": 1,
+  "safety": {"risk_cap": 40.0, "slope_cap_deg": 35.0},
+  "execution": {
+    "cores": [0],
+    "validation_cores": [0, 1, 2, 3],
+    "process_watchdog_s": 600.0,
+    "reserve_bytes_per_worker": 419430400,
+    "retry_started_trials": false
+  },
+  "analysis": {
+    "baseline": "sem_native",
+    "checkpoints_s": [0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0],
+    "sem_equivalent_lambda": 30.0,
+    "noninferiority_margin": 0.01,
+    "bootstrap_replicates": 20000,
+    "bootstrap_seed": 61016
+  },
+  "methods": {
+    "sem_native": {"kind": "sem_native", "engine": "cpp",
+                   "convergence_stop": {"relative_eps": 0.001, "window_iterations": 4000}},
+    "a5_rpbit_l33_w4000": {"kind": "rp_bit_a5", "lambda": 33.0, "refine": true, "window_samples": 4000, "batch_min": 500,
+                           "batch_growth": true, "fast_validity": true, "lazy_refine": true, "seed": true}
+  },
+  "phases": {
+    "smoke_a5_10s": {
+      "maps": "smoke", "map_seeds": [101], "planner_seeds": [11], "planning_budget_s": 2.0,
+      "primary_method": "a5_rpbit_l33_w4000",
+      "methods": ["sem_native", "a5_rpbit_l33_w4000"]
+    },
+    "gate_a5_10s": {
+      "maps": "generate", "map_seeds": [51001], "planner_seeds": [516001], "planning_budget_s": 10.0,
+      "primary_method": "a5_rpbit_l33_w4000",
+      "methods": ["sem_native", "a5_rpbit_l33_w4000"]
+    },
+    "heldout_a5_10s": {
+      "maps": "generate",
+      "map_seeds": [121001, 121002, 121003, 121004, 121005, 121006, 121007, 121008, 121009, 121010],
+      "planner_seeds": [1216001, 1216002, 1216003, 1216004, 1216005], "planning_budget_s": 10.0,
+      "primary_method": "a5_rpbit_l33_w4000",
+      "methods": ["sem_native", "a5_rpbit_l33_w4000"]
+    }
+  }
+}

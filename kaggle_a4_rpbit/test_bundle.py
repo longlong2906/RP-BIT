@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / 'tools')]
 import rp_bit_protocol as protocol
 from kaggle_a4_rpbit import bootstrap, fairtime, package_notebook
+from corridor_v4_execution import read
 
 
 class NotebookTests(unittest.TestCase):
@@ -62,6 +63,18 @@ class NotebookTests(unittest.TestCase):
         for text in ('1 000 lượt', '20 s', '34 nhóm CTest', package_notebook.A5_REGISTRATION):
             self.assertIn(text, intro)
 
+    def test_a5_10s_notebook(self):
+        notebook = package_notebook.create_notebook('payload.b64', 'f' * 64, package_notebook.PROFILES['a5_10s'])
+        code = [''.join(cell['source']) for cell in notebook['cells'] if cell['cell_type'] == 'code']
+        for index, source in enumerate(code):
+            compile(source, f'cell{index}', 'exec')
+        self.assertIn('map seeds 121001-121010', code[1])
+        self.assertIn("'kaggle_a4_rpbit.a5_10s'", code[2])
+        self.assertIn("reports/heldout_a5_10s/REPORT.md", code[2])
+        intro = ''.join(notebook['cells'][0]['source'])
+        for text in ('500 lượt', '10 s', '34 nhóm CTest', package_notebook.A5_10S_REGISTRATION):
+            self.assertIn(text, intro)
+
     def test_cells_compile_and_carry_the_registered_identity(self):
         notebook = package_notebook.create_notebook('payload.b64', 'a' * 64)
         code = [''.join(cell['source']) for cell in notebook['cells'] if cell['cell_type'] == 'code']
@@ -102,14 +115,17 @@ class PayloadTests(unittest.TestCase):
                 'configs/a4_rpbitstar_v1_a5_kaggle.json', 'kaggle_a4_rpbit/a5.py', package_notebook.A5_REGISTRATION,
                 'src/RpBitA5.cpp', 'include/terrain25d/RpBitA5.hpp', 'apps/RpBitA5Worker.inc', 'cmake/RpBitA5Targets.cmake',
                 'tools/rp_bit_a5_field.py', 'tools/analyze_rp_bit_a5.py', 'tests/integration/rp_bit_a5_tests.cpp',
-                'tests/test_rp_bit_a5_worker.py', 'tests/unit/terrain_tests.cpp', 'docs/A5_RP_BITSTAR.md')
+                'tests/test_rp_bit_a5_worker.py', 'tests/unit/terrain_tests.cpp', 'docs/A5_RP_BITSTAR.md',
+                # A5 against SEM-RRT* only, 10 s cap
+                'configs/a4_rpbitstar_v1_a5_10s_kaggle.json', 'kaggle_a4_rpbit/a5_10s.py',
+                package_notebook.A5_10S_REGISTRATION, 'tools/analyze_rp_bit_a5_sem.py')
 
     def test_payload_holds_the_registered_sources_only(self):
         catalog = ROOT / '_bundle_catalog.json'
         if catalog.is_file():  # inside the extracted Kaggle payload: membership only, CTest may add files
             names = set(json.loads(catalog.read_text(encoding='utf-8'))['files'])
         else:  # the current delivery; the spent held-out delivery predates the C++ port
-            names = {path.relative_to(ROOT).as_posix() for path in package_notebook.source_files(package_notebook.PROFILES['a5'])}
+            names = {path.relative_to(ROOT).as_posix() for path in package_notebook.source_files(package_notebook.PROFILES['a5_10s'])}
         self.assertFalse(set(self.REQUIRED) - names)
         self.assertFalse([name for name in names if name.startswith(('results/', 'build', 'dist/', 'runs/'))])
 
@@ -183,6 +199,8 @@ class ControllerTests(unittest.TestCase):
             fairtime.main(['--started-epoch', '0', '--session-seconds', '10'], experiment='selfstop')
         with self.assertRaises((RuntimeError, ValueError)):
             fairtime.main(['--started-epoch', '0', '--session-seconds', '10'], experiment='putn')
+        with self.assertRaises((RuntimeError, ValueError)):
+            fairtime.main(['--started-epoch', '0', '--session-seconds', '10'], experiment='a5_10s')
 
 
 class FairtimeControllerTests(unittest.TestCase):
@@ -412,6 +430,72 @@ class A5ControllerTests(unittest.TestCase):
                                        ('a5_rpbit_l33_w4000_eager', dict(success=False), False),
                                        ('a4_rpbit_l33_m20', dict(success=False), False),
                                        ('a5_rpbit_l33_w4000', dict(correctness_errors=['a5_seed_event_inconsistent']), False)):
+            rows = copy.deepcopy(good)
+            next(r for r in rows if r['method'] == method).update(change)
+            self.assertEqual(verdict(rows)['passed'], passed, (method, change))
+
+
+
+class A5TenSecondControllerTests(unittest.TestCase):
+    """Same controller with the 10 s registration: only the A5 primary and the self-stop SEM-RRT*, fresh seeds."""
+
+    def setUp(self):
+        self.experiment = fairtime.EXPERIMENTS['a5_10s']
+        self.config = protocol.load_config(self.experiment['config'])
+
+    def test_registration_and_constants(self):
+        registered = fairtime.check_registration(self.experiment['config'], self.config, self.experiment)
+        self.assertEqual(registered['planned_trials'], {'smoke_a5_10s': 14, 'gate_a5_10s': 10, 'heldout_a5_10s': 500})
+        # Same CTest set and sources as the 20 s A5 held-out, plus the verdict tool of this experiment.
+        earlier = fairtime.EXPERIMENTS['a5']
+        self.assertEqual(self.experiment['ctest'], earlier['ctest'])
+        self.assertEqual(set(registered['source_sha256']) - set(read(earlier['registration'])['source_sha256']),
+                         {'tools/analyze_rp_bit_a5_sem.py'})
+        self.assertEqual(self.experiment['a5_verdict'], 'tools/analyze_rp_bit_a5_sem.py')
+        gate, heldout = self.experiment['identity_gate'], self.experiment['heldout']
+        self.assertEqual({k: v for k, v in gate.items() if k != 'phase'}, {k: v for k, v in fairtime.IDENTITY_GATE.items() if k != 'phase'})
+        self.assertIn(gate['phase'], self.experiment['gates'])
+        self.assertIn(self.config['phases'][gate['phase']]['planner_seeds'][0], gate['seeds'])
+        self.assertIn(gate['core'], self.config['execution']['cores'])
+        self.assertEqual(self.config['phases'][heldout]['primary_method'], 'a5_rpbit_l33_w4000')
+        profile = package_notebook.PROFILES['a5_10s']
+        self.assertEqual((profile['module'], profile['config'], profile['heldout']),
+                         (self.experiment['module'], self.experiment['config'], heldout))
+
+    def test_a_changed_config_or_source_is_refused(self):
+        changed = copy.deepcopy(self.config)
+        changed['phases'][self.experiment['heldout']]['planning_budget_s'] = 20.
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'config.json'
+            path.write_text(json.dumps(changed), encoding='utf-8')
+            with self.assertRaisesRegex(ValueError, 'differs from the registration'):
+                fairtime.check_registration(path, changed, self.experiment)
+        real = fairtime.file_hash
+        with mock.patch.object(fairtime, 'file_hash', lambda p: '0' * 64 if Path(p).name == 'analyze_rp_bit_a5_sem.py' else real(p)):
+            with self.assertRaisesRegex(ValueError, 'source differs from the registration: tools/analyze_rp_bit_a5_sem.py'):
+                fairtime.check_registration(self.experiment['config'], self.config, self.experiment)
+
+    def test_gate_rules(self):
+        entries = protocol.inventory(self.config, 'gate_a5_10s')
+        good = [dict(trial_id=e['trial_id'], method=e['method'], success=True, correctness_errors=[],
+                     iterations=9000 if e['method'] == protocol.NATIVE else None, solve_time_s=2.) for e in entries]
+
+        def verdict(rows):
+            with tempfile.TemporaryDirectory() as folder:
+                directory = Path(folder) / 'gate_a5_10s'
+                directory.mkdir()
+                manifest = dict(entries=entries, sessions=[dict(collection_status='COMPLETE')], config_sha256='c', binary_sha256='b')
+                (directory / 'manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+                summary = dict(planned=len(entries), validated=len(rows), success=sum(r['success'] for r in rows),
+                               correctness_failures=sum(bool(r['correctness_errors']) for r in rows), rows=rows)
+                (directory / 'summary_full.json').write_text(json.dumps(summary), encoding='utf-8')
+                return bootstrap.gate_verdict(directory, self.config, 'gate_a5_10s')
+        self.assertEqual(len(good), 10)
+        self.assertTrue(verdict(good)['passed'])
+        # A SEM-RRT* planner failure is a result; an A5 failure or any correctness error stops the run.
+        for method, change, passed in ((protocol.NATIVE, dict(success=False), True),
+                                       ('a5_rpbit_l33_w4000', dict(success=False), False),
+                                       (protocol.NATIVE, dict(correctness_errors=['sem_convergence_inconsistent']), False)):
             rows = copy.deepcopy(good)
             next(r for r in rows if r['method'] == method).update(change)
             self.assertEqual(verdict(rows)['passed'], passed, (method, change))

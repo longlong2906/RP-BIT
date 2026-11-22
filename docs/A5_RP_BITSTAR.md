@@ -576,6 +576,31 @@ gốc (100 lượt cho một bài toán).
 - Held-out này đã dùng: không chạy lại, không thêm seed, không gộp với các held-out trước; Time trên Kaggle không so
   với số đo trên Windows.
 
+### 6.12 Đăng ký held-out thứ hai trên Kaggle: chỉ A5 và SEM-RRT*, trần 10 s (22/11/2026; chưa chạy)
+
+Biên bản: `logs/a4_rpbit_a5_10s_20261122/registration.json`, cấu hình `configs/a4_rpbitstar_v1_a5_10s_kaggle.json`.
+Người dùng yêu cầu sau khi xem kết quả 6.11. Họ chọn trần 10 s, chỉ chạy hai phương pháp, dùng seed mới, và giữ
+tiêu chí 1, 2a, 3 với ngưỡng cũ. Không chạy A4 nên không chấm 2b.
+
+| Mục | Nội dung |
+|---|---|
+| Nhánh | `sem_native`, `a5_rpbit_l33_w4000` (chính); tham số y như 6.10 |
+| Đầu vào | 5 họ × seed bản đồ 121001–121010 × planner seed 1216001–1216005 = 250 slot; chưa dùng ở đâu trước đó |
+| Pha | `smoke_a5_10s` 14, `gate_a5_10s` 10 (seed 51001, 10 s), `heldout_a5_10s` 500 lượt |
+| Thực thi | Kaggle, 1 làn trên CPU 0, mỗi lúc một lượt; validate trên 4 lõi; 34 nhóm CTest như 6.10 |
+| Chấm | `tools/analyze_rp_bit.py` và `tools/analyze_rp_bit_a5_sem.py`: tiêu chí 1, 2a, 3 với hàm và ngưỡng của `tools/analyze_rp_bit_a5.py` |
+
+Trên dữ liệu 20 s của mục 6.11, công cụ chấm mới cho đúng các tiêu chí 1, 2a, 3 và mục thời gian của SEM và A5 như
+công cụ cũ. Biên bản ghi hash của cấu hình, từng pha và 27 file nguồn: 26 file của 6.10, không đổi, cộng công cụ
+chấm mới. Bộ điều khiển là `kaggle_a4_rpbit/a5_10s.py`.
+
+Dự đoán ghi trước, tính từ 6.11:
+- A5 không chạy quá 2,7 s, nên trần 10 s không ảnh hưởng A5.
+- Có 29/250 lượt SEM chạy quá 10 s. Nếu cắt các lượt này ở 10 s, tỉ số SEM / A5 giảm từ 6,20 xuống 5,62.
+- Chất lượng của SEM ở 10 s bằng ở 20 s.
+- Kiểm tra dễ trượt nhất trong 2a là `pri_target_lower`. Ở 20 s, chênh lệch PRI gộp là −0,03%, khoảng tin cậy 95% là
+  [−0,31%; +0,26%].
+
 ## 7. Hạn chế đã biết
 
 - **C3, C4 được thiết kế lại sau khi xem probe trên bản đồ dev.** Held-out (mục 6.11) là lần thử đầu tiên của chúng
