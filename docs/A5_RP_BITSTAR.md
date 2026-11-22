@@ -601,6 +601,39 @@ Dự đoán ghi trước, tính từ 6.11:
 - Kiểm tra dễ trượt nhất trong 2a là `pri_target_lower`. Ở 20 s, chênh lệch PRI gộp là −0,03%, khoảng tin cậy 95% là
   [−0,31%; +0,26%].
 
+### 6.13 Đăng ký ablation trên Kaggle: giai thừa 2⁴ của C1–C4, cạnh SEM-RRT* (22/11/2026; chưa chạy)
+
+Biên bản: `logs/a4_rpbit_a5_ablation_20261122/registration.json`, cấu hình `configs/a4_rpbitstar_v1_a5_ablation_kaggle.json`.
+Người dùng chọn giai thừa đầy đủ, chạy trên Kaggle với seed mới và 150 slot, không thêm phần độ nhạy tham số, rồi
+thêm SEM-RRT* làm mốc tham chiếu. Bậc thang ở 6.6 chỉ đo mỗi cơ chế theo một thứ tự trên bản đồ đã thấy; giai thừa
+đo mọi tổ hợp.
+
+| Mục | Nội dung |
+|---|---|
+| Ô | 16 tổ hợp bật/tắt, ghi `C1C2C3C4`. C1 tắt = batch 200 mẫu cố định như A4; C1 bật = `batch_min` 500 và batch lớn dần. Mọi tham số khác giữ như nhánh chính (W = 4 000, λ = 33). |
+| Hai ô đầu mút | 0000 trùng từng bit với A4; 1111 là `a5_rpbit_l33_w4000`; 1100 là nhánh C1 + C2 của 6.10 |
+| Tham chiếu | `sem_native` ở mọi pha; A4 thật chỉ chạy ở cổng, để kiểm 0000 ≡ A4 |
+| Đầu vào | 5 họ × seed bản đồ 131001–131010 × planner seed 1316001–1316003 = 150 slot; chưa dùng ở đâu trước đó |
+| Pha | `smoke_a5_abl` 119, `gate_a5_abl` 90, `heldout_a5_abl` 2 550 lượt; trần 20 s; Kaggle, 1 làn trên CPU 0; khoảng 6–7 giờ |
+| Cổng | như 6.10, thêm: đường cuối trùng từng byte ở mọi cặp ô chỉ khác C2 và giữa 0000 với A4 |
+| Phân tích | `tools/analyze_rp_bit_a5_ablation.py` |
+
+Phân tích ghép theo slot, trên các slot mà cả 16 ô đều có đường an toàn. Bootstrap theo bản đồ rồi theo seed như các
+báo cáo trước. Có ba thước đo: Time solve, log Time, và J₃₀ tương đối so với ô 0000. Các đại lượng ước lượng:
+- hiệu ứng chính của mỗi Ci;
+- sáu tương tác hai chiều;
+- phần Shapley của T(1111) − T(0000), không phụ thuộc thứ tự thêm cơ chế, bốn phần cộng lại đúng bằng tổng;
+- bỏ từng Ci khỏi A5, và thêm từng Ci vào A4.
+
+Luật đọc: Ci "giảm Time" khi cận trên 95% của hiệu ứng chính < 0; Ci "không làm kém chất lượng" khi cận trên của
+ΔJ₃₀ tương đối ≤ +0,1%. Không có phán quyết đạt/không đạt chung.
+
+Chạy thử trên Windows (không phải bằng chứng):
+- Smoke 119/119 và gate 90/90 đã validate nghiêm ngặt, 0 lỗi correctness.
+- 96/96 cặp chỉ khác C2 và 5/5 cặp 0000 / A4 có đường cuối trùng nhau.
+- Trên 5 map cổng, phần Shapley của C1, C2, C3, C4 là 43%, 24%, 17% và 16%.
+- C3 tiết kiệm nhiều hơn hẳn khi C1 tắt (tương tác C1 × C3 = +0,34 s), điều bậc thang ở 6.6 không thấy được.
+
 ## 7. Hạn chế đã biết
 
 - **C3, C4 được thiết kế lại sau khi xem probe trên bản đồ dev.** Held-out (mục 6.11) là lần thử đầu tiên của chúng

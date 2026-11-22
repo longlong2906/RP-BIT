@@ -1,0 +1,60 @@
+{
+  "protocol_id": "a4_rpbitstar_v1",
+  "schema_version": 1,
+  "safety": {"risk_cap": 40.0, "slope_cap_deg": 35.0},
+  "execution": {
+    "cores": [0],
+    "validation_cores": [0, 1, 2, 3],
+    "process_watchdog_s": 600.0,
+    "reserve_bytes_per_worker": 419430400,
+    "retry_started_trials": false
+  },
+  "analysis": {
+    "baseline": "sem_native",
+    "checkpoints_s": [0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0],
+    "sem_equivalent_lambda": 30.0,
+    "noninferiority_margin": 0.01,
+    "bootstrap_replicates": 20000,
+    "bootstrap_seed": 61016
+  },
+  "methods": {
+    "sem_native": {"kind": "sem_native", "engine": "cpp",
+                   "convergence_stop": {"relative_eps": 0.001, "window_iterations": 4000}},
+    "a4_rpbit_l33_m20": {"kind": "rp_bit", "lambda": 33.0, "refine": true, "stop_batches": 20},
+    "a5_abl_0000": {"kind": "rp_bit_a5", "lambda": 33.0, "refine": true, "window_samples": 4000, "batch_min": 200, "batch_growth": false, "fast_validity": false, "lazy_refine": false, "seed": false},
+    "a5_abl_0001": {"kind": "rp_bit_a5", "lambda": 33.0, "refine": true, "window_samples": 4000, "batch_min": 200, "batch_growth": false, "fast_validity": false, "lazy_refine": false, "seed": true},
+    "a5_abl_0010": {"kind": "rp_bit_a5", "lambda": 33.0, "refine": true, "window_samples": 4000, "batch_min": 200, "batch_growth": false, "fast_validity": false, "lazy_refine": true, "seed": false},
+    "a5_abl_0011": {"kind": "rp_bit_a5", "lambda": 33.0, "refine": true, "window_samples": 4000, "batch_min": 200, "batch_growth": false, "fast_validity": false, "lazy_refine": true, "seed": true},
+    "a5_abl_0100": {"kind": "rp_bit_a5", "lambda": 33.0, "refine": true, "window_samples": 4000, "batch_min": 200, "batch_growth": false, "fast_validity": true, "lazy_refine": false, "seed": false},
+    "a5_abl_0101": {"kind": "rp_bit_a5", "lambda": 33.0, "refine": true, "window_samples": 4000, "batch_min": 200, "batch_growth": false, "fast_validity": true, "lazy_refine": false, "seed": true},
+    "a5_abl_0110": {"kind": "rp_bit_a5", "lambda": 33.0, "refine": true, "window_samples": 4000, "batch_min": 200, "batch_growth": false, "fast_validity": true, "lazy_refine": true, "seed": false},
+    "a5_abl_0111": {"kind": "rp_bit_a5", "lambda": 33.0, "refine": true, "window_samples": 4000, "batch_min": 200, "batch_growth": false, "fast_validity": true, "lazy_refine": true, "seed": true},
+    "a5_abl_1000": {"kind": "rp_bit_a5", "lambda": 33.0, "refine": true, "window_samples": 4000, "batch_min": 500, "batch_growth": true, "fast_validity": false, "lazy_refine": false, "seed": false},
+    "a5_abl_1001": {"kind": "rp_bit_a5", "lambda": 33.0, "refine": true, "window_samples": 4000, "batch_min": 500, "batch_growth": true, "fast_validity": false, "lazy_refine": false, "seed": true},
+    "a5_abl_1010": {"kind": "rp_bit_a5", "lambda": 33.0, "refine": true, "window_samples": 4000, "batch_min": 500, "batch_growth": true, "fast_validity": false, "lazy_refine": true, "seed": false},
+    "a5_abl_1011": {"kind": "rp_bit_a5", "lambda": 33.0, "refine": true, "window_samples": 4000, "batch_min": 500, "batch_growth": true, "fast_validity": false, "lazy_refine": true, "seed": true},
+    "a5_abl_1100": {"kind": "rp_bit_a5", "lambda": 33.0, "refine": true, "window_samples": 4000, "batch_min": 500, "batch_growth": true, "fast_validity": true, "lazy_refine": false, "seed": false},
+    "a5_abl_1101": {"kind": "rp_bit_a5", "lambda": 33.0, "refine": true, "window_samples": 4000, "batch_min": 500, "batch_growth": true, "fast_validity": true, "lazy_refine": false, "seed": true},
+    "a5_abl_1110": {"kind": "rp_bit_a5", "lambda": 33.0, "refine": true, "window_samples": 4000, "batch_min": 500, "batch_growth": true, "fast_validity": true, "lazy_refine": true, "seed": false},
+    "a5_rpbit_l33_w4000": {"kind": "rp_bit_a5", "lambda": 33.0, "refine": true, "window_samples": 4000, "batch_min": 500, "batch_growth": true, "fast_validity": true, "lazy_refine": true, "seed": true}
+  },
+  "phases": {
+    "smoke_a5_abl": {
+      "maps": "smoke", "map_seeds": [101], "planner_seeds": [11], "planning_budget_s": 2.0,
+      "primary_method": "a5_rpbit_l33_w4000",
+      "methods": ["sem_native", "a5_abl_0000", "a5_abl_0001", "a5_abl_0010", "a5_abl_0011", "a5_abl_0100", "a5_abl_0101", "a5_abl_0110", "a5_abl_0111", "a5_abl_1000", "a5_abl_1001", "a5_abl_1010", "a5_abl_1011", "a5_abl_1100", "a5_abl_1101", "a5_abl_1110", "a5_rpbit_l33_w4000"]
+    },
+    "gate_a5_abl": {
+      "maps": "generate", "map_seeds": [51001], "planner_seeds": [516001], "planning_budget_s": 20.0,
+      "primary_method": "a5_rpbit_l33_w4000",
+      "methods": ["sem_native", "a4_rpbit_l33_m20", "a5_abl_0000", "a5_abl_0001", "a5_abl_0010", "a5_abl_0011", "a5_abl_0100", "a5_abl_0101", "a5_abl_0110", "a5_abl_0111", "a5_abl_1000", "a5_abl_1001", "a5_abl_1010", "a5_abl_1011", "a5_abl_1100", "a5_abl_1101", "a5_abl_1110", "a5_rpbit_l33_w4000"]
+    },
+    "heldout_a5_abl": {
+      "maps": "generate",
+      "map_seeds": [131001, 131002, 131003, 131004, 131005, 131006, 131007, 131008, 131009, 131010],
+      "planner_seeds": [1316001, 1316002, 1316003], "planning_budget_s": 20.0,
+      "primary_method": "a5_rpbit_l33_w4000",
+      "methods": ["sem_native", "a5_abl_0000", "a5_abl_0001", "a5_abl_0010", "a5_abl_0011", "a5_abl_0100", "a5_abl_0101", "a5_abl_0110", "a5_abl_0111", "a5_abl_1000", "a5_abl_1001", "a5_abl_1010", "a5_abl_1011", "a5_abl_1100", "a5_abl_1101", "a5_abl_1110", "a5_rpbit_l33_w4000"]
+    }
+  }
+}

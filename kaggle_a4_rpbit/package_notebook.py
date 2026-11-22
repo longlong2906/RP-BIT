@@ -27,6 +27,7 @@ SELFSTOP_REGISTRATION = 'logs/a4_rpbit_selfstop_20261117/registration.json'
 PUTN_REGISTRATION = 'logs/a4_rpbit_putn_20261119/registration.json'
 A5_REGISTRATION = 'logs/a4_rpbit_a5_heldout_20261122/registration.json'
 A5_10S_REGISTRATION = 'logs/a4_rpbit_a5_10s_20261122/registration.json'
+A5_ABLATION_REGISTRATION = 'logs/a4_rpbit_a5_ablation_20261122/registration.json'
 
 
 def code_cell(source):
@@ -344,6 +345,42 @@ Nếu trạng thái là `PAUSED_TIME`: mở phiên mới, thêm toàn bộ Outpu
 đầu không bao giờ chạy lại. SEM-RRT* là bản tái dựng của dự án, không phải mã của tác giả.
 '''
 
+A5_ABLATION_INTRO = '''# Ablation A5 / RP-BIT*: giai thừa 2⁴ của bốn cơ chế, cạnh SEM-RRT* bản C++ — trần 20 s, trên Kaggle
+
+Notebook build lại A4, A5 và bản C++ của SEM-RRT* trên Linux, chạy các cổng kiểm tra trên đầu vào **không** thuộc
+held-out, rồi mới chạy thí nghiệm đã đăng ký trong `logs/a4_rpbit_a5_ablation_20261122/registration.json`:
+5 họ × seed bản đồ 131001–131010 × planner seed 1316001–1316003 × 17 phương pháp = **2 550 lượt**.
+
+- 16 ô bật/tắt bốn cơ chế: C1 (cửa sổ 4 000 mẫu với batch lớn dần; tắt = batch 200 mẫu như A4), C2 (bỏ qua phép
+  tính độ dốc khi đã có chứng chỉ), C3 (tinh chỉnh lười), C4 (nghiệm mồi). Ô 0000 là A4, ô 1111 là A5 chính.
+- SEM-RRT* chạy bằng bản C++ làm mốc tham chiếu. Mọi phương pháp tự dừng theo cùng luật (chi phí không giảm ít nhất
+  0,1% qua 4 000 vòng lặp / mẫu), trần **20 s**.
+- Thu thập chạy 1 làn trên CPU 0, mỗi lúc một lượt: một tiến trình, 1 thread. Các phương pháp không bao giờ chạy cùng
+  lúc. Validate (không đo giờ) chạy sau khi thu thập xong, trên 4 lõi.
+
+Thứ tự:
+1. Kiểm tra cấu hình và mã nguồn khớp hash trong bản đăng ký; build, rồi chạy 34 nhóm CTest.
+2. Chạy hai cổng `smoke_a5_abl` và `gate_a5_abl` (seed 51001; cổng này chạy thêm A4). Ngoài các điều kiện cũ, mọi cặp
+   ô chỉ khác C2 và cặp ô 0000 / A4 phải cho cùng đường cuối.
+3. Kiểm tra SEM Python và C++ trùng từng bit trên 5 map của cổng (7 425 vòng, 2 seed).
+4. Chạy held-out theo từng đoạn khoảng 1 giờ, mỗi đoạn có checkpoint. Dự kiến khoảng 6–7 giờ cho cả phiên.
+5. Validate nghiêm ngặt ô 1111, viết báo cáo và bảng ablation (hiệu ứng chính, tương tác, Shapley).
+
+Nếu một cổng không đạt, notebook dừng trước held-out.
+
+Cách chạy:
+1. Upload file `.b64` thành một Kaggle Dataset riêng tư rồi **Add Input** vào notebook này.
+2. Settings: **Accelerator = None**, **Internet = On**. Chạy **Save Version → Save & Run All (Commit)**.
+3. Kết quả nằm trong `/kaggle/working/a4_rpbit/`:
+   - `bootstrap_status.json`, `reports/heldout_a5_abl/REPORT.md` và `reports/heldout_a5_abl/A5_ABLATION.md`;
+   - `results_light.tar.gz`: nhỏ, đủ để phân tích;
+   - `campaign.tar.gz` và `linux_runtime.tar`: lớn, để kiểm toán và chạy tiếp.
+
+Nếu trạng thái là `PAUSED_TIME`: mở phiên mới, thêm toàn bộ Output của phiên trước làm Input, rồi đặt
+`PREVIOUS_OUTPUT` ở ô cấu hình thành thư mục chứa `campaign.tar.gz` và `linux_runtime.tar`. Lượt đã bắt
+đầu không bao giờ chạy lại. SEM-RRT* là bản tái dựng của dự án, không phải mã của tác giả.
+'''
+
 # One delivery per registered Kaggle run; 'heldout' is the spent 2026-11-16 delivery, kept reproducible.
 PROFILES = dict(
     heldout=dict(delivery=DELIVERY, payload=PAYLOAD, notebook=NOTEBOOK, config=protocol.KAGGLE_CONFIG,
@@ -393,7 +430,17 @@ PROFILES = dict(
                 phases=('smoke_a5_10s', 'gate_a5_10s', 'heldout_a5_10s'),
                 extra_files=(A5_10S_REGISTRATION, A5_REGISTRATION, PUTN_REGISTRATION, SELFSTOP_REGISTRATION,
                              FAIRTIME_REGISTRATION, 'logs/sem_cpp_20261117/dev_equivalence/summary.json',
-                             'docs/A5_RP_BITSTAR.md')))
+                             'docs/A5_RP_BITSTAR.md')),
+    a5_ablation=dict(delivery='a5_rpbit_ablation_kaggle_r1', payload='a5_rpbit_ablation_source',
+                     notebook='a5_rpbit_ablation_kaggle.ipynb', config=ROOT / 'configs/a4_rpbitstar_v1_a5_ablation_kaggle.json',
+                     module='kaggle_a4_rpbit.a5_ablation', heldout='heldout_a5_abl', seeds='131001-131010',
+                     intro=A5_ABLATION_INTRO,
+                     changed_after_lock=CHANGED_AFTER_LOCK + ('CMakeLists.txt', 'tools/rp_bit_validation.py',
+                                                              'apps/terrain_benchmark.cpp'),
+                     phases=('smoke_a5_abl', 'gate_a5_abl', 'heldout_a5_abl'),
+                     extra_files=(A5_ABLATION_REGISTRATION, A5_10S_REGISTRATION, A5_REGISTRATION, PUTN_REGISTRATION,
+                                  SELFSTOP_REGISTRATION, FAIRTIME_REGISTRATION,
+                                  'logs/sem_cpp_20261117/dev_equivalence/summary.json', 'docs/A5_RP_BITSTAR.md')))
 
 
 def create_notebook(payload_name, payload_sha256, profile=PROFILES['heldout']):

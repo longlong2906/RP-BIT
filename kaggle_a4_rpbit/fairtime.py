@@ -5,7 +5,8 @@ trial at a time -> gates on non-held-out inputs (smoke_fairtime, gate_fairtime) 
 of SEM-RRT* on the gate maps -> record -> held-out collection in checkpointed chunks -> strict
 validation of the primary method -> reports -> stop. Registrations: EXPERIMENTS (fairtime:
 logs/a4_rpbit_fairtime_20261117, selfstop: logs/a4_rpbit_selfstop_20261117, putn: logs/a4_rpbit_putn_20261119,
-a5: logs/a4_rpbit_a5_heldout_20261122, a5_10s: logs/a4_rpbit_a5_10s_20261122); a started trial is never retried.
+a5: logs/a4_rpbit_a5_heldout_20261122, a5_10s: logs/a4_rpbit_a5_10s_20261122, a5_ablation:
+logs/a4_rpbit_a5_ablation_20261122); a started trial is never retried.
 """
 from __future__ import annotations
 
@@ -66,7 +67,18 @@ EXPERIMENTS = dict(
                 heldout='heldout_a5_10s', gates=('smoke_a5_10s', 'gate_a5_10s'),
                 identity_gate=dict(IDENTITY_GATE, phase='gate_a5_10s'), record='a5_rpbit_10s_heldout_record_v1',
                 module='kaggle_a4_rpbit.a5_10s', ctest=REQUIRED_CTEST + ('rp_bit_a5_core', 'rp_bit_a5_worker', 'terrain_unit'),
-                a5_verdict='tools/analyze_rp_bit_a5_sem.py', title='A5 so với SEM-RRT* C++, trần 10 s, Kaggle `heldout_a5_10s`'))
+                a5_verdict='tools/analyze_rp_bit_a5_sem.py', title='A5 so với SEM-RRT* C++, trần 10 s, Kaggle `heldout_a5_10s`'),
+    # Ablation: the 2^4 factorial of C1-C4 (cell 0000 = A4, 1111 = A5 primary) beside the self-stop SEM-RRT*, 20 s cap,
+    # fresh seeds (logs/a4_rpbit_a5_ablation_20261122); the gates also require equal final paths in every C2-only pair
+    # and between cell 0000 and A4, and the report adds the factorial analysis.
+    a5_ablation=dict(config=ROOT / 'configs/a4_rpbitstar_v1_a5_ablation_kaggle.json',
+                     registration=ROOT / 'logs/a4_rpbit_a5_ablation_20261122/registration.json',
+                     heldout='heldout_a5_abl', gates=('smoke_a5_abl', 'gate_a5_abl'),
+                     identity_gate=dict(IDENTITY_GATE, phase='gate_a5_abl'), record='a5_rpbit_ablation_record_v1',
+                     module='kaggle_a4_rpbit.a5_ablation',
+                     ctest=REQUIRED_CTEST + ('rp_bit_a5_core', 'rp_bit_a5_worker', 'terrain_unit'),
+                     a5_verdict='tools/analyze_rp_bit_a5_ablation.py', path_identity=True,
+                     title='Ablation A5 (giai thừa 2⁴ của C1–C4) và SEM-RRT* C++, trần 20 s, Kaggle `heldout_a5_abl`'))
 
 
 def check_registration(config_path, config, experiment=EXPERIMENTS['fairtime']):
@@ -82,6 +94,17 @@ def check_registration(config_path, config, experiment=EXPERIMENTS['fairtime']):
     if changed:
         raise ValueError('source differs from the registration: ' + ', '.join(changed))
     return registered
+
+
+def path_identity(verdict, directory):
+    """Ablation gates: the cells that differ only in C2, and cell 0000 and A4, must end on the same final path."""
+    from analyze_rp_bit_a5_ablation import identity_checks
+    verdict['path_identity'] = identity_checks(directory)
+    differing = [line for key, row in verdict['path_identity'].items() if key != 'basis' for line in row['differing']]
+    if differing:
+        verdict['problems'] += ['final path differs: ' + line for line in differing]
+        verdict['passed'] = False
+    return verdict
 
 
 def run_record(campaign, config_path, config, identity, machine, equivalence, experiment=EXPERIMENTS['fairtime']):
@@ -171,6 +194,8 @@ def pipeline(args, campaign, output, python, env, started, work_epoch, hard_dead
         base.status(campaign, 'RUNNING', phase=name)
         run_phase(name, '--full-validation')
         verdict = base.gate_verdict(results / name, config, name)
+        if experiment.get('path_identity'):
+            verdict = path_identity(verdict, results / name)
         atomic_json(receipt, verdict)
         if not verdict['passed']:
             base.status(campaign, 'GATE_FAILED', phase=name, problems=verdict['problems'][:20])

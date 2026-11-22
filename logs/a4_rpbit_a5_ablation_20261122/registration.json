@@ -1,0 +1,174 @@
+{
+ "record": "a5_rpbit_ablation_registration_v1",
+ "protocol_id": "a4_rpbitstar_v1",
+ "created_utc": "2026-11-22T15:27:03.971506+00:00",
+ "purpose": "Registered before any trial of the held-out phase of this experiment. The Kaggle controller refuses a config or a listed source whose hash differs and writes heldout_deviation_record.json with the Linux identity before the first held-out trial.",
+ "user_decision_2026_11_22": "The user asked Claude to design the ablation of A5. In the question dialog the user chose the three proposed options: a full 2^4 factorial of the four mechanisms (16 cells) instead of leave-one-out plus the ladder or no new runs; Kaggle with fresh seeds and 150 slots (one session) instead of 250 slots or a local run; no parameter sensitivity (W, batch_min). Claude then showed the design (levels, gates, estimands, reading rule, hypotheses, limitations) and asked whether to add SEM-RRT*; the user answered 'add the SEM-RRT* arm', taken as approval of the design with that change. SEM-RRT* is a reference only: it enters no factorial estimand.",
+ "question": "On unseen maps, on one Kaggle core, how much does each of the four A5 mechanisms (C1 sample window on growing batches, C2 slope shortcut, C3 lazy refinement, C4 lattice seed) contribute to the solve-time reduction from A4 (cell 0000) to the A5 primary (cell 1111), does any of them cost final quality (J30), and how do they interact?",
+ "relation_to_previous": {
+  "heldout_kaggle": "Spent (2026-11-16): A4 vs Python SEM-RRT* with a fixed 7425 iterations; never pooled.",
+  "heldout_fairtime": "Spent (2026-11-17): A4 vs C++ SEM-RRT* with the full 20 s; never pooled.",
+  "heldout_selfstop": "Spent (2026-11-17): A4 and self-stopping C++ SEM-RRT*, 20 s cap; never pooled.",
+  "heldout_putn": "Spent (2026-11-19): A4, SEM-RRT*, two PUTN arms, 10 s cap; never pooled.",
+  "heldout_a5_kaggle": "Spent (2026-11-22, kernel notebook48a9ab731c): SEM-RRT*, A4, A5 primary (= cell 1111 here) and its C1 + C2 arm (= cell 1100 here), 20 s cap, seeds 111001-111010 x 1116001-1116005; C1 + C2 4.895/1.025 s and primary 0.790 s. Never pooled with this run.",
+  "heldout_a5_10s": "Registered and delivered 2026-11-22 (logs/a4_rpbit_a5_10s_20261122), not run when this registration was written; its seeds 121001-121010 x 1216001-1216005 are not used here; independent of this experiment.",
+  "factorial": "The rpRefine factorial held-out seeds (91001-91010 x 916001-916005) stay reserved and are not used here.",
+  "dev_ladder": "dev_a5 (seen dev maps 41001-41003 x 416001-416005, Windows) measured the cumulative ladder A4 -> C1 -> C1+C2 -> C1+C2+C3 -> C1-C4 only: dTime -0.619, -0.263, -0.012, -0.066 s (docs/A5_RP_BITSTAR.md 6.6). C3 and C4 were redesigned after probe 1 on those maps.",
+  "seen_before_registration": "Windows rehearsal of both gates of this config (results/a5_rpbit_ablation_rehearsal_20261122; gate map seed 51001, not held-out): every gate condition met; on the 5 gate maps the Shapley shares of T(1111) - T(0000) = -1.379 s were C1 43%, C2 24%, C3 17%, C4 16%, with interaction C1 x C3 +0.338 s. Windows timing; the expectations below take this into account."
+ },
+ "config": "configs/a4_rpbitstar_v1_a5_ablation_kaggle.json",
+ "config_sha256": "ea49503c23d55f54eb889a302c8353bd6b6df7bb9710835651f2fba32193f609",
+ "phase_config_sha256": {
+  "smoke_a5_abl": "caae8a9bb967373ffbb9b50c08004dd16f5f1c6521a2817c5d23926e3e1d5c82",
+  "gate_a5_abl": "aaa6b65d10ad67678b6e1ad902454b3522f1ce65ee29c802809fc4a0dc6d38ca",
+  "heldout_a5_abl": "7b3d23f43a0b7db7c477af53d3fee6ca7ee669b4ba4e8de393e197158f2a9f67"
+ },
+ "gates": [
+  "smoke_a5_abl",
+  "gate_a5_abl"
+ ],
+ "heldout_phase": "heldout_a5_abl",
+ "planned_trials": {
+  "smoke_a5_abl": 119,
+  "gate_a5_abl": 90,
+  "heldout_a5_abl": 2550
+ },
+ "base_commit": "899e107",
+ "base_commit_note": "HEAD when registered; the 26 sources frozen by the 20 s A5 registration are unchanged since a445226/245f712. source_sha256 is authoritative.",
+ "source_sha256": {
+  "src/RpBitA5.cpp": "250736ddfdd5d3cd90c8dc73f31649b9dff1a03300e66d3236ff902d30d2c422",
+  "include/terrain25d/RpBitA5.hpp": "31ace493975e20ad006edbca0b68b1a9abb2629df58e84dab0ff0351b9dede1a",
+  "apps/RpBitA5Worker.inc": "486889425a1e1f165c01a07c4562043f81497dc06080b75a82146a5db5d823dc",
+  "cmake/RpBitA5Targets.cmake": "e3227f559ba77a37120bac8da0df1903ba26d2f43ed766cd3a8c59375c17d469",
+  "src/RpBit.cpp": "d2eedd2da8622508c36321bfc4e83d1f63e7e85104aaf2a63bf26d10251b5eee",
+  "include/terrain25d/RpBit.hpp": "d597bf5f62da35ae46f160e2d7395af2099d0259e2f493eac125c92e9967095d",
+  "apps/RpBitWorker.inc": "27a93aa4bfe85d92daaf4609c1b226400f7e37d113d18fd2712e7ac480408b3d",
+  "cmake/RpBitTargets.cmake": "ea3864fc5f545db4e271ec95191349de077f5cf9e6fef205542708a38d10b482",
+  "src/SemRrtStar.cpp": "0abfd5ca1341fd13d5edeb39fdd0a47c1e0939055442e664bde758ce11a527c2",
+  "src/SemRrtStarC.cpp": "9abed8948096804914059ebb1f38dfd3dc04cb6cd5280891beaacee4f4b55512",
+  "include/terrain25d/SemRrtStar.hpp": "01c4a5f6f170b6078ef438b483cc3bfb99d869f4e3526ef6883683e3ac0a776b",
+  "include/terrain25d/SemRrtStarC.h": "bf6850ede96215758f8cc05ebed16f68b19a4f5cfb0b32b2c466f849b5bf0c4b",
+  "cmake/SemCppTargets.cmake": "cd13ba2c675f2d28e687d63b023d043ef2789b381d8431572ad4b8ffb4f28320",
+  "apps/terrain_benchmark.cpp": "36dc8a775594c546ddd4454710a5d765c3b617e48f52e479179187fbccb912c8",
+  "src/Terrain.cpp": "86f70e971fd95ab3d4ae91a7a0194645b06cd8663483acb450379872d2216426",
+  "include/terrain25d/Terrain.hpp": "23827e0aa885b63ca5b7e3e95a0ebd5c3a1c8aec6b3ffbd248ec3cd3a161f64f",
+  "CMakeLists.txt": "13c3c809f2fb9d57bd81f99649c9269d622032a473b40a909a5d3d70d697e3db",
+  "tools/rp_bit_protocol.py": "5c0089c46d421e9837d1ce6a659ee7a1d308a788fcd5d0765e835c1dde530dce",
+  "tools/run_rp_bit.py": "f98e17b934a1e1e59cb23a26f42da92951986e4fd2c6a45a5f0e655c89aa08c6",
+  "tools/run_sem_exposure.py": "f4698a39b7e4de94be5495934bf0085d6b8ed446737668c63022a46b8301a57d",
+  "tools/native_paper_worker.py": "dd3839befdaeb6c69afe2fd4b247996df4487fd37501e945d9c15b52438d25ba",
+  "tools/sem_native_cpp.py": "8999e16b7ef4ff467935f631421ec97e2c1b0366e3edc9f5f66b72dc5fca976d",
+  "tools/rp_bit_a5_field.py": "c4407220247e9e6e48048965225085a0c04cdf4137786699299c93bd56f98377",
+  "tools/rp_bit_validation.py": "9f81d2d259c8b98ccab94eac23f0b31a443306505fc557c94ccbcef3194d53d3",
+  "tools/analyze_rp_bit.py": "3c9d977423c1b698c39adb346e5d31461b0942f6f60bede6ade6962a088e1d99",
+  "tools/analyze_rp_bit_a5.py": "7125d1fdfd24ff41e99c5c90aabe8420b803825dca48b7646b6c8144036fea67",
+  "tools/analyze_rp_bit_a5_ablation.py": "07e948e5b6b569fa764beb559dca67a72479d6279ac2358169038f579cb42cc4"
+ },
+ "design": {
+  "factors": {
+   "C1": "on: batch_growth with batch_min 500 (batches 500/500/1000/2000 in the window); off: batch_min 200 without growth, i.e. the A4 batches (20 x 200 samples). C1 therefore merges the larger first batch and the growth; they are not separated.",
+   "C2": "fast_validity (slope-envelope shortcut, decision-identical to SafetyPolicy).",
+   "C3": "lazy_refine.",
+   "C4": "seed (lattice seed refined by rpRefine, sampling bounded by the published J)."
+  },
+  "fixed": "kind rp_bit_a5, lambda 33, eps 0.1%, window_samples 4000, refine on, refinement parameters of A4, 20 s cap.",
+  "cells": "a5_abl_<C1C2C3C4> for the 15 cells other than 1111; cell 1111 keeps the name a5_rpbit_l33_w4000 (identical to the A5 primary of heldout_a5_kaggle); cell 1100 equals a5_rpbit_l33_w4000_eager; cell 0000 is A4 bit for bit (C++ test rp_bit_a5_core, and a gate condition here).",
+  "reference": "sem_native: the self-stop C++ SEM-RRT* of heldout_a5_kaggle; a4_rpbit_l33_m20 (locked A4) runs in gate_a5_abl only, for the cell 0000 identity check."
+ },
+ "inputs": {
+  "families": [
+   "traversable_hill",
+   "ridge_pass",
+   "rolling_terrain",
+   "narrow_passage",
+   "mixed_obstacles"
+  ],
+  "map_seeds": [
+   131001,
+   131002,
+   131003,
+   131004,
+   131005,
+   131006,
+   131007,
+   131008,
+   131009,
+   131010
+  ],
+  "planner_seeds": [
+   1316001,
+   1316002,
+   1316003
+  ],
+  "slots": 150,
+  "novelty": "map seeds 131001-131010 and planner seeds 1316001-1316003 appear in no earlier config, tool, test, document, log, report or result as a seed (whole work tree searched 2026-11-22 with word boundaries: 1316001-1316003 occur only in this experiment's files; 131001-131010 occur elsewhere only as unrelated triangle/edge/heuristic/iteration counters in dev trial logs). tests/test_rp_bit_tooling.py A5AblationConfigTests checks every config."
+ },
+ "timing_protocol": [
+  "Kaggle CPU session (no accelerator). execution.cores [0]: one timed lane, one trial at a time, so no two methods ever run concurrently.",
+  "One fresh process per trial, pinned to its lane core, one thread.",
+  "The 17 methods of a (map, planner seed) block run back to back on the same core; the method order rotates between blocks.",
+  "Time = solve_time_s: A5 cells from before potential construction to their own stop; SEM-RRT* from planner construction to its own stop. Time before the solve clock is reported only.",
+  "Validation is not timed and runs only after the collection of a phase is complete, on execution.validation_cores [0, 1, 2, 3]. Every trial gets the fast independent validation; cell 1111 also the strict per-snapshot validation."
+ ],
+ "gates_before_heldout": [
+  "The controller refuses to start if the config, a phase config or any file of source_sha256 differs from this registration.",
+  "Linux build of the delivered sources; the 34 CTest groups of heldout_a5_kaggle.",
+  "smoke_a5_abl: 7 smoke fixtures, 2 s, SEM-RRT* and the 16 cells; gate_a5_abl: the 5 families at map seed 51001, planner seed 516001, 20 s, SEM-RRT*, A4 and the 16 cells. Both strictly validated.",
+  "Each gate needs: complete verdicts, no correctness error, every A4 and A5 trial successful, and (kaggle_a4_rpbit/fairtime.py path_identity) byte-identical final paths in every pair of cells that differ only in C2 and between cell 0000 and A4; a pair where either run hit its time budget is skipped.",
+  "sem_cpp_bit_identity on the 5 gate maps (seeds 516001, 516002, 7425 iterations), as in the earlier Kaggle runs.",
+  "A SEM-RRT* planner failure in a gate is a result, not a gate failure.",
+  "Any failed gate stops the run before the held-out; the cause is reported, nothing is retuned."
+ ],
+ "analysis": {
+  "tools": {
+   "tools/analyze_rp_bit.py": "report.json: tables, anytime, and the ten checks of every cell against sem_native (descriptive here)",
+   "tools/analyze_rp_bit_a5_ablation.py": "a5_ablation.json / A5_ABLATION.md: the estimands below"
+  },
+  "slots": "Factorial estimands use the slots where all 16 cells end on a final safe path (their number is reported); SEM ratios use the slots where SEM-RRT* and the cell both end safe.",
+  "metrics": "Solve time (s), its natural logarithm, and J30 relative to cell 0000 of the same slot (J / J_0000 - 1).",
+  "estimands": [
+   "Main effect of Ci: mean over the 8 cell pairs that differ only in Ci of (on - off), per slot, averaged over slots.",
+   "Interaction Ci x Cj: mean over the 4 contexts of (effect of Ci with Cj on) - (effect of Ci with Cj off).",
+   "Shapley share of T(1111) - T(0000): the mean marginal contribution of Ci over the 24 orders of adding the four mechanisms (subset weights 1/4, 1/12, 1/12, 1/4); the four shares add up to the total.",
+   "Read directly: T(1111) - T(1111 without Ci) and T(0000 with Ci) - T(0000)."
+  ],
+  "intervals": "Hierarchical bootstrap map -> seed of tools/analyze_rp_bit.py, 20000 replicates, seed 61016 (one bootstrap per metric with that seed); 95% two-sided intervals and the one-sided 95% upper bound.",
+  "reading_rule": "Ci 'reduces Time' if the upper bound of its main effect on Time is < 0; Ci 'costs no quality' if the upper bound of its main effect on relative J30 is <= +0.1%. There is no overall pass/fail; every estimand is reported.",
+  "correctness": "A final-path difference in a C2-only pair (where neither run hit its time budget) is a correctness finding about C2, not an effect; it is reported with the slot.",
+  "descriptive": [
+   "Per cell: PSR, Time mean and sd, SEM/cell ratio of means and faster pairs, the ten checks against SEM-RRT*, time of the first safe path, J30 at 0.1/0.25/0.5/1 s over the final J30 of cell 0000 and the number of slots with a path there.",
+   "Per cell, from the trial directories: batches, refinements, refine time, deferred refinements, slope checks without certificate (C2 cells), seed published, final path is the seed.",
+   "Shapley shares of Time per family (point estimates)."
+  ]
+ },
+ "stated_expectation": [
+  "C1 has the largest Shapley share of the time reduction and reduces Time; its J30 effect stays within +-0.1%.",
+  "C2 reduces Time and changes no final path: all 8 x 150 C2-only pairs identical.",
+  "C3 reduces Time in the factorial, mainly with C1 off (the dev ladder measured it only with C1 on: -0.012 s); interaction C1 x C3 positive, i.e. C3 saves less once C1 is on; T(1111) - T(1111 without C3) small.",
+  "C4 reduces Time moderately and improves J30 at 0.25 s; its final J30 effect may be slightly positive (dev +0.015%) and stays within +0.1%; the final path is the seed in roughly 1/5 of the C4 runs with C1 on (heldout_a5_kaggle 47/250).",
+  "Interactions C1 x C2, C1 x C3 and C1 x C4 positive: each other mechanism saves fewer seconds once C1 is on.",
+  "Cell 1111 near 0.8 s and cell 1100 near 1.0 s, as on heldout_a5_kaggle; cell 0000 near A4's 3.0 s. Expected session about 6-7 hours (one Kaggle session; a PAUSED_TIME continuation is possible)."
+ ],
+ "rules": [
+  "Started trials are never retried; no seeds are added; analysis and reading rule are not changed after any held-out result is seen.",
+  "Results are reported as measured on Kaggle Linux; their Time is not compared with Windows numbers and not pooled with other held-outs."
+ ],
+ "deviations_from_a4_lock": [
+  "A4 core files (src/RpBit.cpp, include/terrain25d/RpBit.hpp, apps/RpBitWorker.inc, cmake/RpBitTargets.cmake) are unchanged.",
+  "apps/terrain_benchmark.cpp: dispatch lines of the rpRefine replay worker (factorial) and of the A5 worker; A4 output byte-identical on dev.",
+  "src/Terrain.cpp: Terrain::load parses in memory (std::from_chars, std::stod fallback); values and accepted inputs unchanged on all 167 maps.",
+  "Tooling: rp_bit_protocol.py, run_rp_bit.py, rp_bit_validation.py, run_sem_exposure.py, native_paper_worker.py and analyze_rp_bit.py changed after the lock (A5 kind, binary field, start-up outside the clocks); hashes in source_sha256."
+ ],
+ "delivery_plan": [
+  "kaggle_a4_rpbit: EXPERIMENTS['a5_ablation'] with this registration and the 34 CTest groups, module kaggle_a4_rpbit/a5_ablation.py; path_identity adds the final-path checks to both gates; the reporting step runs tools/analyze_rp_bit_a5_ablation.py.",
+  "Packager profile 'a5_ablation' and bundle tests; Windows rehearsal of smoke and gate before delivery; delivery audit."
+ ],
+ "limitations": [
+  "C2 depends on the terrain: on these generated families nearly every edge has a certificate, so the ablation says nothing about terrain close to the 35 degree cap.",
+  "C1 merges two changes (batch_min 200 -> 500 and growth); the factorial does not separate them.",
+  "150 slots (30 per family), fewer than the 250 of the held-outs; one Kaggle core; shared cloud VM timing noise (cells of a block share the core and rotate order).",
+  "C3 and C4 were redesigned after seeing the dev maps; SEM-RRT* is a project reconstruction, not the authors' code.",
+  "The stop window is matched in samples/iterations, not in time or work."
+ ],
+ "revision": 1
+}

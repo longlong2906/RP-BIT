@@ -75,6 +75,18 @@ class NotebookTests(unittest.TestCase):
         for text in ('500 lượt', '10 s', '34 nhóm CTest', package_notebook.A5_10S_REGISTRATION):
             self.assertIn(text, intro)
 
+    def test_a5_ablation_notebook(self):
+        notebook = package_notebook.create_notebook('payload.b64', '0' * 64, package_notebook.PROFILES['a5_ablation'])
+        code = [''.join(cell['source']) for cell in notebook['cells'] if cell['cell_type'] == 'code']
+        for index, source in enumerate(code):
+            compile(source, f'cell{index}', 'exec')
+        self.assertIn('map seeds 131001-131010', code[1])
+        self.assertIn("'kaggle_a4_rpbit.a5_ablation'", code[2])
+        self.assertIn("reports/heldout_a5_abl/REPORT.md", code[2])
+        intro = ''.join(notebook['cells'][0]['source'])
+        for text in ('2 550 lượt', '20 s', '34 nhóm CTest', 'A5_ABLATION.md', package_notebook.A5_ABLATION_REGISTRATION):
+            self.assertIn(text, intro)
+
     def test_cells_compile_and_carry_the_registered_identity(self):
         notebook = package_notebook.create_notebook('payload.b64', 'a' * 64)
         code = [''.join(cell['source']) for cell in notebook['cells'] if cell['cell_type'] == 'code']
@@ -118,14 +130,17 @@ class PayloadTests(unittest.TestCase):
                 'tests/test_rp_bit_a5_worker.py', 'tests/unit/terrain_tests.cpp', 'docs/A5_RP_BITSTAR.md',
                 # A5 against SEM-RRT* only, 10 s cap
                 'configs/a4_rpbitstar_v1_a5_10s_kaggle.json', 'kaggle_a4_rpbit/a5_10s.py',
-                package_notebook.A5_10S_REGISTRATION, 'tools/analyze_rp_bit_a5_sem.py')
+                package_notebook.A5_10S_REGISTRATION, 'tools/analyze_rp_bit_a5_sem.py',
+                # A5 ablation: 2^4 factorial of C1-C4 beside SEM-RRT*
+                'configs/a4_rpbitstar_v1_a5_ablation_kaggle.json', 'kaggle_a4_rpbit/a5_ablation.py',
+                package_notebook.A5_ABLATION_REGISTRATION, 'tools/analyze_rp_bit_a5_ablation.py')
 
     def test_payload_holds_the_registered_sources_only(self):
         catalog = ROOT / '_bundle_catalog.json'
         if catalog.is_file():  # inside the extracted Kaggle payload: membership only, CTest may add files
             names = set(json.loads(catalog.read_text(encoding='utf-8'))['files'])
         else:  # the current delivery; the spent held-out delivery predates the C++ port
-            names = {path.relative_to(ROOT).as_posix() for path in package_notebook.source_files(package_notebook.PROFILES['a5_10s'])}
+            names = {path.relative_to(ROOT).as_posix() for path in package_notebook.source_files(package_notebook.PROFILES['a5_ablation'])}
         self.assertFalse(set(self.REQUIRED) - names)
         self.assertFalse([name for name in names if name.startswith(('results/', 'build', 'dist/', 'runs/'))])
 
@@ -201,6 +216,8 @@ class ControllerTests(unittest.TestCase):
             fairtime.main(['--started-epoch', '0', '--session-seconds', '10'], experiment='putn')
         with self.assertRaises((RuntimeError, ValueError)):
             fairtime.main(['--started-epoch', '0', '--session-seconds', '10'], experiment='a5_10s')
+        with self.assertRaises((RuntimeError, ValueError)):
+            fairtime.main(['--started-epoch', '0', '--session-seconds', '10'], experiment='a5_ablation')
 
 
 class FairtimeControllerTests(unittest.TestCase):
@@ -499,6 +516,81 @@ class A5TenSecondControllerTests(unittest.TestCase):
             rows = copy.deepcopy(good)
             next(r for r in rows if r['method'] == method).update(change)
             self.assertEqual(verdict(rows)['passed'], passed, (method, change))
+
+
+
+class A5AblationControllerTests(unittest.TestCase):
+    """Same controller with the ablation registration: 16 factorial cells and SEM-RRT*, A4 in the gate only."""
+
+    def setUp(self):
+        self.experiment = fairtime.EXPERIMENTS['a5_ablation']
+        self.config = protocol.load_config(self.experiment['config'])
+
+    def test_registration_and_constants(self):
+        registered = fairtime.check_registration(self.experiment['config'], self.config, self.experiment)
+        self.assertEqual(registered['planned_trials'], {'smoke_a5_abl': 119, 'gate_a5_abl': 90, 'heldout_a5_abl': 2550})
+        earlier = fairtime.EXPERIMENTS['a5']
+        self.assertEqual(self.experiment['ctest'], earlier['ctest'])
+        self.assertEqual(set(registered['source_sha256']) - set(read(earlier['registration'])['source_sha256']),
+                         {'tools/analyze_rp_bit_a5_ablation.py'})
+        self.assertEqual((self.experiment['a5_verdict'], self.experiment['path_identity']),
+                         ('tools/analyze_rp_bit_a5_ablation.py', True))
+        gate, heldout = self.experiment['identity_gate'], self.experiment['heldout']
+        self.assertEqual({k: v for k, v in gate.items() if k != 'phase'}, {k: v for k, v in fairtime.IDENTITY_GATE.items() if k != 'phase'})
+        self.assertIn(gate['phase'], self.experiment['gates'])
+        self.assertIn(self.config['phases'][gate['phase']]['planner_seeds'][0], gate['seeds'])
+        self.assertIn(gate['core'], self.config['execution']['cores'])
+        self.assertEqual(self.config['phases'][heldout]['primary_method'], 'a5_rpbit_l33_w4000')
+        profile = package_notebook.PROFILES['a5_ablation']
+        self.assertEqual((profile['module'], profile['config'], profile['heldout']),
+                         (self.experiment['module'], self.experiment['config'], heldout))
+
+    def test_a_changed_config_or_source_is_refused(self):
+        changed = copy.deepcopy(self.config)
+        changed['methods']['a5_abl_0110']['lazy_refine'] = False
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'config.json'
+            path.write_text(json.dumps(changed), encoding='utf-8')
+            with self.assertRaisesRegex(ValueError, 'differs from the registration'):
+                fairtime.check_registration(path, changed, self.experiment)
+        real = fairtime.file_hash
+        with mock.patch.object(fairtime, 'file_hash', lambda p: '0' * 64 if Path(p).name == 'analyze_rp_bit_a5_ablation.py' else real(p)):
+            with self.assertRaisesRegex(ValueError, 'source differs from the registration: tools/analyze_rp_bit_a5_ablation.py'):
+                fairtime.check_registration(self.experiment['config'], self.config, self.experiment)
+
+    def test_gate_rules_with_final_path_identity(self):
+        entries = protocol.inventory(self.config, 'gate_a5_abl')
+        good = [dict(trial_id=e['trial_id'], method=e['method'], map_id=e['map_id'], planner_seed=e['planner_seed'],
+                     success=True, correctness_errors=[], iterations=9000 if e['method'] == protocol.NATIVE else None,
+                     solve_time_s=1., termination_reason='CONVERGED_NO_IMPROVEMENT', final_j_sem=100., final_cost_terrain_m=30.,
+                     final_length_xy_m=29., final_pri=1., final_vertex_count=9, final_sharp_turn_count=0) for e in entries]
+
+        def verdict(rows):
+            with tempfile.TemporaryDirectory() as folder:
+                directory = Path(folder) / 'gate_a5_abl'
+                directory.mkdir()
+                manifest = dict(protocol_id=protocol.PROTOCOL_ID, phase='gate_a5_abl', config=self.config, entries=entries,
+                                sessions=[dict(collection_status='COMPLETE')], config_sha256='c', binary_sha256='b')
+                (directory / 'manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+                summary = dict(planned=len(entries), validated=len(rows), success=sum(r['success'] for r in rows),
+                               correctness_failures=sum(bool(r['correctness_errors']) for r in rows), rows=rows)
+                (directory / 'summary_full.json').write_text(json.dumps(summary), encoding='utf-8')
+                return fairtime.path_identity(bootstrap.gate_verdict(directory, self.config, 'gate_a5_abl'), directory)
+        self.assertEqual(len(good), 90)
+        passed = verdict(good)
+        self.assertTrue(passed['passed'], passed['problems'])
+        self.assertEqual({k: v['checked'] for k, v in passed['path_identity'].items() if k != 'basis'},
+                         {'c2_pairs': 40, 'cell_0000_vs_a4': 5})
+        # A SEM-RRT* planner failure is a result; an A5 or A4 failure, or a different final path where the C2 shortcut
+        # or cell 0000 must reproduce the same decisions, stops the run.
+        for method, change, ok in ((protocol.NATIVE, dict(success=False), True),
+                                   ('a5_abl_1011', dict(success=False), False),
+                                   ('a4_rpbit_l33_m20', dict(final_length_xy_m=29.5), False),
+                                   ('a5_abl_0100', dict(final_j_sem=100.5), False),
+                                   (protocol.NATIVE, dict(final_j_sem=150.), True)):
+            rows = copy.deepcopy(good)
+            next(r for r in rows if r['method'] == method).update(change)
+            self.assertEqual(verdict(rows)['passed'], ok, (method, change))
 
 
 if __name__ == '__main__':

@@ -1147,6 +1147,161 @@ class A5SemVerdictTests(unittest.TestCase):
             self.verdict([5.] * 10, [1.] * 10, arms=("sem_native", "a4_rpbit_l33_m20", "a5_rpbit_l33_w4000"))
 
 
+class A5AblationConfigTests(unittest.TestCase):
+    """A5 ablation on Kaggle: the 2^4 factorial of C1-C4 beside SEM-RRT*, 20 s cap, fresh seeds; A4 only in the gate."""
+    PATH = ROOT / "configs/a4_rpbitstar_v1_a5_ablation_kaggle.json"
+
+    def setUp(self):
+        self.config = protocol.load_config(self.PATH)
+
+    def test_factorial_cells(self):
+        import analyze_rp_bit_a5_ablation as tool
+        earlier = protocol.load_config(protocol.A5_KAGGLE_CONFIG)["methods"]
+        methods = self.config["methods"]
+        cell = tool.cells(methods)
+        primary = earlier["a5_rpbit_l33_w4000"]
+        self.assertEqual((cell[tool.FULL], methods[cell[tool.FULL]]), ("a5_rpbit_l33_w4000", primary))
+        self.assertEqual(methods[cell[1, 1, 0, 0]], earlier["a5_rpbit_l33_w4000_eager"])
+        for bits, name in cell.items():
+            spec = methods[name]
+            self.assertEqual(spec, dict(primary, batch_min=500 if bits[0] else 200, batch_growth=bool(bits[0]),
+                                        fast_validity=bool(bits[1]), lazy_refine=bool(bits[2]), seed=bool(bits[3])), name)
+        # Cell 0000 is the A4 batch window: 20 batches of 200 samples, every A5 switch off.
+        self.assertEqual(4000, methods[cell[tool.NONE]]["window_samples"])
+        self.assertEqual(200 * earlier["a4_rpbit_l33_m20"]["stop_batches"], methods[cell[tool.NONE]]["window_samples"])
+        for name in ("sem_native", "a4_rpbit_l33_m20"):
+            self.assertEqual(methods[name], earlier[name])
+        self.assertEqual(set(methods), {"sem_native", "a4_rpbit_l33_m20", *cell.values()})
+
+    def test_phases_budget_and_fresh_seeds(self):
+        earlier = protocol.load_config(protocol.A5_KAGGLE_CONFIG)
+        for key in ("protocol_id", "schema_version", "safety", "execution"):
+            self.assertEqual(self.config[key], earlier[key], key)
+        self.assertEqual(self.config["analysis"], {k: v for k, v in earlier["analysis"].items() if k != "contrasts"})
+        phases = self.config["phases"]
+        self.assertEqual(list(phases), ["smoke_a5_abl", "gate_a5_abl", "heldout_a5_abl"])
+        arms = [name for name in self.config["methods"] if name != "a4_rpbit_l33_m20"]
+        self.assertEqual(phases["smoke_a5_abl"]["methods"], arms)
+        self.assertEqual(phases["heldout_a5_abl"]["methods"], arms)
+        self.assertEqual(phases["gate_a5_abl"]["methods"], ["sem_native", "a4_rpbit_l33_m20", *arms[1:]])
+        self.assertEqual({phase["primary_method"] for phase in phases.values()}, {"a5_rpbit_l33_w4000"})
+        without = lambda phase: {key: value for key, value in phase.items() if key != "methods"}
+        self.assertEqual(without(phases["smoke_a5_abl"]), without(earlier["phases"]["smoke_a5_kaggle"]))
+        self.assertEqual(without(phases["gate_a5_abl"]), without(earlier["phases"]["gate_a5_kaggle"]))
+        held = phases["heldout_a5_abl"]
+        self.assertEqual((held["maps"], held["planning_budget_s"]), ("generate", 20.))
+        fresh = set(held["map_seeds"]) | set(held["planner_seeds"])
+        self.assertEqual(fresh, set(range(131001, 131011)) | set(range(1316001, 1316004)))
+        self.assertEqual([len(protocol.inventory(self.config, name)) for name in phases], [119, 90, 2550])
+        for path in sorted((ROOT / "configs").glob("a4_rpbitstar_v1*.json")):
+            config = protocol.load_config(path)
+            for name, phase in config["phases"].items():
+                if (path, name) != (self.PATH, "heldout_a5_abl"):
+                    self.assertFalse(fresh & (set(phase["map_seeds"]) | set(phase["planner_seeds"])), (path.name, name))
+
+    def test_held_out_needs_the_flag(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with self.assertRaisesRegex(SystemExit, "held-out requires"):
+                runner.run(Path(folder) / "out", "heldout_a5_abl", "missing", "missing", config_path=self.PATH)
+            self.assertFalse((Path(folder) / "out").exists())
+
+
+class A5AblationAnalysisTests(unittest.TestCase):
+    """tools/analyze_rp_bit_a5_ablation.py: factorial effects, Shapley shares and the final-path identity checks."""
+    STEP = (-1., -.3, -.01, -.05)  # seconds each mechanism removes on its own
+    C1_C3 = .2                      # C3 saves 0.2 s less once C1 is on
+
+    def setUp(self):
+        import analyze_rp_bit_a5_ablation
+        self.tool = analyze_rp_bit_a5_ablation
+        self.folder = tempfile.TemporaryDirectory()
+        self.addCleanup(self.folder.cleanup)
+        self.config = protocol.load_config(A5AblationConfigTests.PATH)
+        self.cell = self.tool.cells(self.config["methods"])
+
+    def time(self, bits, slot):
+        return 3. + .1 * slot + sum(s * b for s, b in zip(self.STEP, bits)) + self.C1_C3 * bits[0] * bits[2]
+
+    def phase(self, *, maps=4, seeds=2, change=None, with_a4=False, drop=None):
+        """Every slot follows the additive model above; C4 raises J by 0.05%, nothing else changes the path."""
+        phase = Path(self.folder.name) / f"phase{len(list(Path(self.folder.name).iterdir()))}"
+        phase.mkdir()
+        names = ["sem_native"] + (["a4_rpbit_l33_m20"] if with_a4 else []) + [self.cell[b] for b in self.tool.BITS]
+        names = [n for n in names if n != drop]
+        config = copy.deepcopy(self.config)
+        config["analysis"]["bootstrap_replicates"] = 2000
+        config["phases"] = dict(p=dict(config["phases"]["gate_a5_abl"], methods=names))
+        bits_of = {name: bits for bits, name in self.cell.items()}
+        entries, rows = [], []
+        for m in range(maps):
+            for seed in range(1, seeds + 1):
+                slot = m * seeds + seed
+                for name in names:
+                    trial = f"m{m}__s{seed}__{name}"
+                    entries.append(dict(trial_id=trial, map_id=f"m{m}", family="ridge_pass" if m % 2 else "flat",
+                                        planner_seed=seed, method=name))
+                    bits = bits_of.get(name, self.tool.NONE)
+                    row = dict(trial_id=trial, success=True, solve_time_s=10. if name == "sem_native" else self.time(bits, slot),
+                               final_j_sem=100. * (1 + 5e-4 * bits[3]), final_cost_terrain_m=30., final_length_xy_m=29.,
+                               final_pri=1., final_vertex_count=9, final_sharp_turn_count=0, first_safe_s=.1,
+                               checkpoints={}, termination_reason="CONVERGED_NO_IMPROVEMENT", full_validation=True)
+                    if change:
+                        row.update(change.get(trial, {}))
+                    rows.append(row)
+        manifest = dict(protocol_id=protocol.PROTOCOL_ID, phase="p", config=config, entries=entries,
+                        config_sha256="c", binary_sha256="b")
+        (phase / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+        (phase / "summary.json").write_text(json.dumps(dict(rows=rows)), encoding="utf-8")
+        return phase
+
+    def build(self, phase):
+        report = dict(sources=analysis.load([phase])[3], complete=True, correctness_failures=0, criteria=[])
+        return self.tool.build(phase, report)
+
+    def test_effects_shapley_and_reading(self):
+        out = self.build(self.phase())
+        est = out["estimates"]
+        expected_main = dict(C1=-1. + self.C1_C3 / 2, C2=-.3, C3=-.01 + self.C1_C3 / 2, C4=-.05)
+        for name, value in expected_main.items():
+            self.assertAlmostEqual(est["time.main_" + name]["estimate"], value)
+            # The interaction is split evenly between C1 and C3 in the Shapley shares.
+            self.assertAlmostEqual(est["time.shapley_" + name]["estimate"], value)
+        self.assertAlmostEqual(est["time.interaction_C1xC3"]["estimate"], self.C1_C3)
+        self.assertAlmostEqual(est["time.interaction_C1xC2"]["estimate"], 0.)
+        self.assertAlmostEqual(sum(est["time.shapley_" + f]["estimate"] for f in self.tool.FACTORS), est["time.total"]["estimate"])
+        self.assertAlmostEqual(est["time.remove_C1"]["estimate"], 1. - self.C1_C3)
+        self.assertAlmostEqual(est["time.add_C3"]["estimate"], -.01)
+        self.assertAlmostEqual(est["j_rel.main_C4"]["estimate"], 5e-4)
+        self.assertAlmostEqual(est["j_rel.main_C2"]["estimate"], 0.)
+        self.assertEqual(out["reading"]["C3"], dict(reduces_time=False, costs_no_quality=True))
+        self.assertEqual(out["reading"]["C1"], dict(reduces_time=True, costs_no_quality=True))
+        self.assertEqual((out["usable_slots"], out["cells"]["1111"]["vs_sem"]["faster_pairs"]), (8, 8))
+        self.assertEqual(out["identity"]["c2_pairs"], dict(checked=64, skipped=0, differing=[]))
+        self.assertNotIn("cell_0000_vs_a4", out["identity"])
+        text = self.tool.markdown(out)
+        self.assertIn("| C3 × C4 |", text)
+        self.assertIn("| 0000 |", text)
+
+    def test_identity_checks(self):
+        cell = self.cell
+        change = {f"m0__s1__{cell[1, 1, 0, 1]}": dict(final_length_xy_m=29.5),
+                  f"m1__s2__{cell[0, 1, 1, 0]}": dict(termination_reason="TIME_BUDGET"),
+                  "m2__s1__a4_rpbit_l33_m20": dict(final_pri=1.5)}
+        checks = self.tool.identity_checks(self.phase(change=change, with_a4=True))
+        self.assertEqual(checks["c2_pairs"]["differing"], [f"m0__s1: {cell[1, 0, 0, 1]} vs {cell[1, 1, 0, 1]}"])
+        self.assertEqual((checks["c2_pairs"]["checked"], checks["c2_pairs"]["skipped"]), (63, 1))
+        self.assertEqual(checks["cell_0000_vs_a4"]["differing"], [f"m2__s1: {cell[0, 0, 0, 0]} vs a4_rpbit_l33_m20"])
+        self.assertEqual(checks["basis"], "verdict final-path fields")
+
+    def test_refuses_anything_but_the_factorial(self):
+        with self.assertRaisesRegex(ValueError, "all 16 cells"):
+            self.build(self.phase(drop="a5_abl_0110"))
+        changed = copy.deepcopy(self.config["methods"])
+        changed["a5_abl_1000"]["batch_min"] = 200
+        with self.assertRaisesRegex(ValueError, "not the registered A5 factorial"):
+            self.tool.cells(changed)
+
+
 class AnalysisTests(unittest.TestCase):
     def test_report_on_labeled_fixture(self):
         with tempfile.TemporaryDirectory() as folder:

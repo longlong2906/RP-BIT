@@ -47,6 +47,9 @@
 !/logs/a4_rpbit_a5_10s_20261122/
 /logs/a4_rpbit_a5_10s_20261122/*
 !/logs/a4_rpbit_a5_10s_20261122/registration.json
+!/logs/a4_rpbit_a5_ablation_20261122/
+/logs/a4_rpbit_a5_ablation_20261122/*
+!/logs/a4_rpbit_a5_ablation_20261122/registration.json
 !/logs/sem_cpp_20261117/
 /logs/sem_cpp_20261117/*
 !/logs/sem_cpp_20261117/dev_equivalence/
