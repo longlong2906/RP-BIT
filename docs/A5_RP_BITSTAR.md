@@ -5,8 +5,9 @@ toàn hay bước tinh chỉnh. Tài liệu này mô tả bốn cơ chế thêm 
 bản đồ dev **đã thấy**. Kế hoạch được duyệt ngày 21/11/2026. Thiết kế của C3 và C4 đã đổi sau probe 1 (mục 6.2);
 người dùng chấp nhận thay đổi đó cùng ngày. Held-out trên Kaggle được đăng ký ngày 22/11/2026 (mục 6.10) và đã chạy:
 nhánh chính đạt cả bốn tiêu chí, SEM / A5 = 6,20 (mục 6.11). Held-out thứ hai, trần 10 s, chỉ A5 và SEM-RRT*,
-cũng đạt cả ba tiêu chí đã đăng ký: SEM / A5 = 5,33 (mục 6.14). Ablation giai thừa 2⁴ đã đăng ký (mục 6.13), chưa
-chạy.
+cũng đạt cả ba tiêu chí đã đăng ký: SEM / A5 = 5,33 (mục 6.14). Ablation giai thừa 2⁴ (đăng ký ở mục 6.13) đã chạy:
+cả bốn cơ chế đều giảm Time mà không làm kém chất lượng; phần Shapley của C1, C2, C3, C4 là 46%, 34%, 13% và 7%
+(mục 6.15).
 
 ## 1. Mục tiêu và những gì giữ nguyên
 
@@ -186,7 +187,7 @@ python -B tools/analyze_rp_bit.py --input results/<thư mục>/dev_a5 --output r
 Chạy `ctest` từ PowerShell. Trong Git Bash, `safe_length_unit` và `safe_length_oracle` nạp nhầm DLL runtime của Git
 và báo lỗi giả (đã gặp ngày 21/11/2026; hai test đó đạt khi chạy lại từ PowerShell).
 
-## 6. Kết quả: dev ngày 21/11/2026 trên bản đồ đã thấy (6.1–6.9), held-out Kaggle ngày 22/11/2026 (6.11, 6.14)
+## 6. Kết quả: dev ngày 21/11/2026 trên bản đồ đã thấy (6.1–6.9), held-out Kaggle ngày 22/11/2026 (6.11, 6.14, 6.15)
 
 Mọi số do oracle Python độc lập tính lại từ bản đồ và point cloud gốc. SEM-RRT* là bản C++ của dự án, tự dừng theo
 đúng luật của A4. Time là thời gian solve tới lúc tự dừng; với A4 và A5 nó gồm dựng potential, BIT* và tinh chỉnh.
@@ -603,7 +604,7 @@ Dự đoán ghi trước, tính từ 6.11:
 - Kiểm tra dễ trượt nhất trong 2a là `pri_target_lower`. Ở 20 s, chênh lệch PRI gộp là −0,03%, khoảng tin cậy 95% là
   [−0,31%; +0,26%].
 
-### 6.13 Đăng ký ablation trên Kaggle: giai thừa 2⁴ của C1–C4, cạnh SEM-RRT* (22/11/2026; chưa chạy)
+### 6.13 Đăng ký ablation trên Kaggle: giai thừa 2⁴ của C1–C4, cạnh SEM-RRT* (22/11/2026; đã chạy, kết quả ở 6.15)
 
 Biên bản: `logs/a4_rpbit_a5_ablation_20261122/registration.json`, cấu hình `configs/a4_rpbitstar_v1_a5_ablation_kaggle.json`.
 Người dùng chọn giai thừa đầy đủ, chạy trên Kaggle với seed mới và 150 slot, không thêm phần độ nhạy tham số, rồi
@@ -733,26 +734,169 @@ kém hơn (3,32 so với 3,22). Trên 48 cặp chung, A5 tốt hơn: 3,18 so v�
 - Held-out này đã dùng: không chạy lại, không thêm seed, không gộp với các held-out trước; Time trên Kaggle không so
   với số đo trên Windows.
 
+### 6.15 Kết quả ablation trên Kaggle: giai thừa 2⁴ của C1–C4, cạnh SEM-RRT* (22/11/2026)
+
+**Lượt chạy và kiểm chứng.**
+- Kernel `notebook35fba604a3`, AMD EPYC 7B12 (hai held-out trước chạy trên Xeon 2,2 GHz). Một phiên từ 16:59 đến
+  20:34 UTC ngày 22/11, khoảng 3,6 giờ (dự kiến 6–7 giờ). Thu thập held-out mất 2,1 giờ, chia 3 đoạn trong cùng phiên:
+  controller đóng đoạn ở mốc mềm mỗi giờ, xuất dữ liệu, rồi chạy tiếp các lượt chưa bắt đầu.
+- Cổng trên Linux: 34/34 nhóm CTest, test bundle 29/29. `smoke_a5_abl` thành công 118/119 (lượt hỏng là SEM-RRT* trên
+  `nodata_thin_obstacle` ở trần 2 s, như các lần trước) và `gate_a5_abl` 90/90, mọi lượt A4 và A5 đều thành công, 0 lỗi
+  correctness. Ở cổng, đường cuối trùng nhau ở 40/40 cặp ô chỉ khác C2 và 5/5 cặp 0000 / A4. SEM Python và C++ trùng
+  từng bit 10/10.
+- Held-out: 2 550/2 550 lượt, mỗi lượt bắt đầu đúng một lần, tất cả trên CPU 0 và không lúc nào hai lượt chạy cùng
+  nhau; 0 lỗi correctness. Validate nghiêm ngặt mọi snapshot của ô 1111: 150/150 đạt.
+- Biên bản thay đổi ghi lúc 17:30:18, trước lượt held-out đầu tiên (17:32:50). Hash của biên bản đăng ký
+  (`75b0df42…`), của config, từng pha và binary Linux trùng nhau ở mọi chỗ ghi; binary Linux trùng với hai lần trước;
+  27 file nguồn đã đăng ký trùng với cây làm việc.
+- Báo cáo dựng lại trên máy cục bộ bằng `tools/analyze_rp_bit.py` và `tools/analyze_rp_bit_a5_ablation.py` trùng báo
+  cáo Kaggle ở mọi khóa, trừ đường dẫn thư mục và chữ số cuối của vài ước lượng trên log Time (lệch lớn nhất 6·10⁻¹⁷,
+  do hàm log của Windows và Linux). Ba file của mỗi trial mà công cụ ablation cần (`path_xy.csv`, `worker.json`,
+  `progress.jsonl`) được tách từ kho trial thô (`logs/a4_rpbit_a5_ablation_20261122/heldout_receipt.json`).
+- Báo cáo đầy đủ ở `reports/a4_rpbit_a5_ablation_kaggle_20261122/heldout_a5_abl/` (`REPORT.md`, `A5_ABLATION.md`,
+  `TABLE2_STYLE.md`); verdict ở `results/a4_rpbit_a5_ablation_kaggle_20261122/`. Kho trial thô 3,52 GB chỉ nằm trong
+  `C:\Users\Long\Downloads\notebook35fba604a3_output`.
+
+**Đủ dữ liệu.** Cả 16 ô có đường an toàn ở 150/150 slot, nên mọi đại lượng dùng đủ 150 slot. 1 200/1 200 cặp ô chỉ
+khác C2 có đường cuối trùng từng byte (`path_xy.csv`), không cặp nào bị bỏ qua.
+
+**Đóng góp của từng cơ chế** (Time solve, giây; trong ngoặc là cận trên một phía 95%). Tổng T(1111) − T(0000) =
+−1,604 s [95%: −1,806; −1,427]:
+
+| Cơ chế | Hiệu ứng chính | Shapley | Phần của tổng | Bỏ khỏi A5 | Thêm vào A4 | ΔJ₃₀ (hiệu ứng chính) | Giảm Time | Không kém chất lượng |
+|---|---:|---:|---:|---:|---:|---:|---|---|
+| C1 | −0,738 [−0,672] | −0,734 | 45,8% | −0,459 | −0,992 | +0,004% [+0,009%] | có | có |
+| C2 | −0,551 [−0,498] | −0,552 | 34,4% | −0,507 | −0,603 | +0,000% [+0,000%] | có | có |
+| C3 | −0,215 [−0,191] | −0,210 | 13,1% | −0,059 | −0,345 | +0,002% [+0,004%] | có | có |
+| C4 | −0,109 [−0,043] | −0,107 | 6,7% | −0,108 | −0,097 | −0,003% [+0,001%] | có | có |
+
+"Bỏ khỏi A5" là T(1111) − T(1111 bỏ Ci); "Thêm vào A4" là T(0000 thêm Ci) − T(0000). Âm nghĩa là có Ci thì nhanh hơn.
+Theo luật đọc đã đăng ký, cả bốn cơ chế đều giảm Time và không làm kém chất lượng.
+
+**Tương tác** (hiệu ứng của Ci khi Cj bật trừ khi Cj tắt, giây; khoảng 95%). Dương nghĩa là Ci tiết kiệm ít hơn khi Cj
+đã bật:
+
+| Cặp | Ước lượng | 95% |
+|---|---:|---|
+| C1 × C2 | +0,127 | [+0,099; +0,158] |
+| C1 × C3 | +0,359 | [+0,303; +0,417] |
+| C1 × C4 | +0,050 | [−0,053; +0,171] |
+| C2 × C3 | −0,020 | [−0,040; −0,003] |
+| C2 × C4 | −0,007 | [−0,041; +0,025] |
+| C3 × C4 | −0,050 | [−0,105; +0,015] |
+
+**Từng ô** (Time solve trung bình trên 150 lượt; tỉ số với SEM tính trên 148 cặp mà SEM có đường an toàn; số batch,
+số lần tinh chỉnh và thời gian tinh chỉnh là trung bình mỗi lượt):
+
+| Ô | Time (s) | SEM / ô | Nhanh hơn SEM | Batch | Tinh chỉnh | Thời gian tinh chỉnh (s) | Đường cuối là nghiệm mồi |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 0000 (= A4) | 2,230 | 1,56 | 104/148 | 23,7 | 16,22 | 0,780 | — |
+| 0001 | 2,133 | 1,63 | 100/148 | 21,5 | 15,51 | 0,736 | 13 |
+| 0010 | 1,886 | 1,85 | 116/148 | 23,9 | 8,29 | 0,423 | — |
+| 0011 | 1,715 | 2,04 | 121/148 | 22,1 | 5,51 | 0,262 | 28 |
+| 0100 | 1,627 | 2,14 | 123/148 | 23,7 | 16,22 | 0,780 | — |
+| 0101 | 1,533 | 2,26 | 123/148 | 21,5 | 15,51 | 0,732 | 13 |
+| 0110 | 1,260 | 2,76 | 135/148 | 23,9 | 8,29 | 0,420 | — |
+| 0111 | 1,086 | 3,20 | 138/148 | 22,1 | 5,51 | 0,260 | 28 |
+| 1000 | 1,239 | 2,81 | 133/148 | 6,7 | 5,81 | 0,295 | — |
+| 1001 | 1,169 | 2,97 | 137/148 | 5,3 | 5,47 | 0,268 | 25 |
+| 1010 | 1,217 | 2,86 | 133/148 | 6,7 | 5,38 | 0,275 | — |
+| 1011 | 1,133 | 3,06 | 139/148 | 5,4 | 3,77 | 0,180 | 32 |
+| 1100 | 0,760 | 4,59 | 146/148 | 6,7 | 5,81 | 0,296 | — |
+| 1101 | 0,686 | 5,06 | 147/148 | 5,3 | 5,47 | 0,267 | 25 |
+| 1110 | 0,735 | 4,75 | 146/148 | 6,7 | 5,38 | 0,274 | — |
+| **1111 (A5)** | **0,627** | **5,54** | 146/148 | 5,4 | 3,77 | 0,180 | 32 |
+
+Mọi ô đều đạt 10/10 tiêu chí mục 5.3 so với SEM-RRT*, kể cả ô 0000.
+
+**Bảng theo kiểu Table II của bài SEM-RRT*** (cách tính như ở 6.11; bảng đủ 17 nhánh ở `TABLE2_STYLE.md`):
+
+| Scenario | Method | PSR ↑ | APL[m] ↓ | PRI ↓ | STI ↓ | Time[ms] ↓ |
+|---|---|---:|---:|---:|---:|---:|
+| traversable_hill | SEM-RRT* | **100%** (30/30) | 34,04 ± 0,93 | 1,21 ± 0,51 | 0,014 ± 0,025 | 1894 ± 825 |
+|  | Ô 0000 (= A4) | **100%** (30/30) | **33,99 ± 0,92** | 1,20 ± 0,51 | **0,000 ± 0,000** | 1387 ± 173 |
+|  | A5 / RP-BIT* (ô 1111) | **100%** (30/30) | 33,99 ± 0,92 | **1,20 ± 0,51** | **0,000 ± 0,000** | **430 ± 59** |
+| ridge_pass | SEM-RRT* | **100%** (30/30) | 39,57 ± 2,48 | 7,09 ± 1,22 | 0,093 ± 0,067 | 3070 ± 1795 |
+|  | Ô 0000 (= A4) | **100%** (30/30) | **39,49 ± 2,34** | 7,04 ± 1,20 | 0,006 ± 0,010 | 2027 ± 538 |
+|  | A5 / RP-BIT* (ô 1111) | **100%** (30/30) | 39,61 ± 2,31 | **7,01 ± 1,23** | **0,005 ± 0,014** | **522 ± 251** |
+| rolling_terrain | SEM-RRT* | **100%** (30/30) | 36,35 ± 1,96 | 4,84 ± 1,50 | 0,112 ± 0,071 | 5287 ± 3984 |
+|  | Ô 0000 (= A4) | **100%** (30/30) | **36,07 ± 1,96** | 4,82 ± 1,46 | 0,002 ± 0,007 | 2398 ± 811 |
+|  | A5 / RP-BIT* (ô 1111) | **100%** (30/30) | 36,10 ± 2,09 | **4,82 ± 1,46** | **0,001 ± 0,005** | **731 ± 198** |
+| narrow_passage | SEM-RRT* | **100%** (30/30) | 36,36 ± 1,21 | 2,63 ± 0,74 | 0,065 ± 0,053 | 2505 ± 1457 |
+|  | Ô 0000 (= A4) | **100%** (30/30) | **36,14 ± 1,16** | 2,63 ± 0,73 | **0,000 ± 0,000** | 2168 ± 288 |
+|  | A5 / RP-BIT* (ô 1111) | **100%** (30/30) | 36,19 ± 1,26 | **2,62 ± 0,72** | **0,000 ± 0,000** | **594 ± 112** |
+| mixed_obstacles | SEM-RRT* | 93,3% (28/30) | 46,67 ± 7,51 | **2,77 ± 0,48** | 0,094 ± 0,070 | 4726 ± 2741 |
+|  | Ô 0000 (= A4) | **100%** (30/30) | 45,83 ± 8,05 | 2,78 ± 0,49 | **0,009 ± 0,014** | 3172 ± 995 |
+|  | A5 / RP-BIT* (ô 1111) | **100%** (30/30) | **45,71 ± 8,03** | 2,79 ± 0,49 | 0,013 ± 0,015 | **858 ± 364** |
+| Tất cả (150 lượt) | SEM-RRT* | 98,7% (148/150) | 38,49 ± 5,65 | 3,72 ± 2,28 | 0,075 ± 0,069 | 3480 ± 2748 |
+|  | Ô 0000 (= A4) | **100%** (150/150) | **38,30 ± 5,70** | 3,70 ± 2,25 | **0,003 ± 0,009** | 2230 ± 863 |
+|  | A5 / RP-BIT* (ô 1111) | **100%** (150/150) | 38,32 ± 5,68 | **3,69 ± 2,24** | 0,004 ± 0,010 | **627 ± 271** |
+
+Hai lượt SEM-RRT* không thành công đều ở `mixed_obstacles_131009` (seed 1316002 và 1316003): đường cuối không an toàn
+vì thiếu điểm đỡ (`missing_sem_support`), không phải lỗi correctness. Mọi ô A5 có đường an toàn ở cả hai slot. Vì vậy
+APL của SEM trên `mixed_obstacles` tính trên 28 đường còn các ô trên 30; trên 28 cặp chung, ô 1111 ngắn hơn SEM 0,13 m
+(−0,28%), không phải gần 1 m như bảng gợi ý. Trên `ridge_pass`, ô 1111 dài hơn SEM thật (+0,04 m, +0,10%) nhưng PRI
+thấp hơn 1,06%.
+
+**So với kỳ vọng ghi trước** (biên bản đăng ký, `stated_expectation`):
+- C1 có phần Shapley lớn nhất (45,8%) và ΔJ₃₀ +0,004%: đúng.
+- C2 không đổi đường cuối nào (1 200/1 200 cặp): đúng.
+- C3 giảm Time chủ yếu khi C1 tắt: thêm vào A4 −0,345 s, bỏ khỏi A5 chỉ −0,059 s; C1 × C3 dương. Đúng. Bậc thang ở 6.6
+  đo C3 khi C1 đã bật, nên chỉ thấy −0,012 s.
+- C4 giảm Time vừa phải (−0,109 s). Thêm C4 vào ô 0000 đưa J₃₀ tại 0,25 s từ 1,043 xuống 1,001 lần J₃₀ cuối của ô
+  0000. Hiệu ứng lên J₃₀ cuối hơi âm (−0,003%), không hơi dương như dự đoán. Đường cuối là nghiệm mồi ở 114/600 lượt
+  của bốn ô bật cả C1 và C4 (19%; ô 1111: 32/150), sát mức khoảng 1/5 đã dự đoán.
+- C1 × C2 và C1 × C3 dương, khoảng tin cậy nằm trên 0. C1 × C4 dương nhưng khoảng tin cậy chứa 0, nên chưa khẳng định
+  được.
+- Mọi ô nhanh hơn dự đoán: ô 1111 0,627 s (dự đoán khoảng 0,8), ô 1100 0,760 s (1,0), ô 0000 2,230 s (3,0). SEM cũng
+  nhanh hơn: trung bình 3,48 s, so với 4,895 s ở 6.11. Lần này máy là AMD EPYC 7B12 thay vì Xeon 2,2 GHz, và bản đồ
+  khác. Phiên chạy khoảng 3,6 giờ thay vì 6–7 giờ.
+- Chạy thử trên 5 map cổng (Windows, 6.13) chia Shapley 43%, 24%, 17%, 16%; trên held-out là 46%, 34%, 13%, 7%.
+
+**Đọc kết quả.**
+- **C1 và C2 chiếm 80% phần giảm.** Tương tác giữa chúng (+0,127 s) nhỏ so với hai hiệu ứng chính.
+- **C3 và C1 trùng phần lớn tác dụng.** Cả hai cùng giảm số lần tinh chỉnh: từ 16,22 lần mỗi lượt ở ô 0000 xuống 8,29
+  khi chỉ có C3, 5,81 khi chỉ có C1, và 5,38 khi có cả hai. Khi C1 đã bật, C3 còn ít lần tinh chỉnh để hoãn.
+- **C2 chứng nhận mọi cạnh** ở mọi ô có C2 (0 phép tính độ dốc chính xác), như trên dev; địa hình dốc hơn sẽ được lợi
+  ít hơn (mục 7).
+- **Tốc độ so với SEM-RRT\*** (chỉ báo, ablation không chấm tiêu chí này):
+  - SEM / ô 1111 là 5,54 theo tỉ số hai trung bình (148 cặp), 4,44 theo tỉ số hai trung vị, 4,69 theo trung bình nhân
+    của tỉ số từng cặp. SEM không chạm trần 20 s lượt nào (lâu nhất 19,46 s), nhưng 4 lượt trên 10 s kéo trung bình
+    lên.
+  - Theo họ (tỉ số hai trung bình trên các cặp): `rolling_terrain` 7,23; `ridge_pass` 5,89; `mixed_obstacles` 5,38;
+    `traversable_hill` 4,41; `narrow_passage` 4,21.
+  - Ô 1111 chậm hơn SEM ở 2/148 cặp, cùng seed 1316003: `narrow_passage_131008` (0,80 s so với 0,63 s) và
+    `mixed_obstacles_131008` (1,54 s so với 1,41 s).
+  - Ô 0000 (A4) chậm hơn SEM ở 44/148 cặp. Ô 1111 nhanh hơn ô 0000 ở cả 150/150 cặp, trung bình nhân 3,59 lần.
+- **Anytime:** tại 0,1 s chưa ô nào có đường. Tại 0,25 s, J₃₀ của các ô có C4 chỉ cao hơn J₃₀ cuối của ô 0000
+  0,06–0,07%; các ô không có C4 cao hơn 0,4–4,3%.
+- Held-out này đã dùng: không chạy lại, không thêm seed, không gộp với các held-out trước; Time trên Kaggle không so
+  với số đo trên Windows.
+
 ## 7. Hạn chế đã biết
 
 - **C3, C4 được thiết kế lại sau khi xem probe trên bản đồ dev.** Held-out (mục 6.11) là lần thử đầu tiên của chúng
-  trên bản đồ chưa thấy, và nhánh chính đạt cả bốn tiêu chí. Held-out 10 s (mục 6.14) là lần thứ hai, cũng đạt. Các
-  số ở mục 6.1–6.9 vẫn chỉ từ bản đồ đã thấy.
-- **Mục tiêu 7–10 lần không đạt.** Tỉ số gộp là 6,28 trên dev, 6,20 trên held-out 20 s và 5,33 trên held-out 10 s.
-  Có họ dưới 5: trên dev là `traversable_hill` 3,91 và `narrow_passage` 4,58; trên held-out 20 s là
-  `traversable_hill` 4,78 và `ridge_pass` 4,14; trên held-out 10 s là `traversable_hill` 4,24.
+  trên bản đồ chưa thấy, và nhánh chính đạt cả bốn tiêu chí. Held-out 10 s (mục 6.14) là lần thứ hai, cũng đạt.
+  Ablation (mục 6.15) là lần thứ ba; ở đó C3 và C4 đều giảm Time mà không làm kém chất lượng. Các số ở mục 6.1–6.9 vẫn
+  chỉ từ bản đồ đã thấy.
+- **Mục tiêu 7–10 lần không đạt.** Tỉ số gộp là 6,28 trên dev, 6,20 trên held-out 20 s, 5,33 trên held-out 10 s và
+  5,54 ở ô 1111 của ablation (chỉ báo, không chấm). Có họ dưới 5: trên dev là `traversable_hill` 3,91 và
+  `narrow_passage` 4,58; trên held-out 20 s là `traversable_hill` 4,78 và `ridge_pass` 4,14; trên held-out 10 s là
+  `traversable_hill` 4,24; trong ablation là `narrow_passage` 4,21 và `traversable_hill` 4,41.
 - **Tỉ số 6,28 chỉ tính thời gian solve.** Tính cả phần trước đồng hồ solve, tỉ số là 5,26 sau mục 6.8 và 6.9; ở
   lượt dev đầu là 3,28. Phần trước solve vẫn gồm băm file để kiểm toàn vẹn ở cả hai pipeline. Trên held-out 20 s:
   6,20 chỉ tính solve, 4,95 tính cả phần trước solve; trên held-out 10 s: 5,33 và 4,39.
 - **Tỉ số giữa hai trung bình chịu ảnh hưởng của các lượt SEM dài.** Trên held-out 20 s, tỉ số hai trung vị là 4,92 và
-  trung bình nhân của tỉ số từng cặp là 5,00 (mục 6.11); trên held-out 10 s là 5,50 và 4,91 (mục 6.14).
+  trung bình nhân của tỉ số từng cặp là 5,00 (mục 6.11); trên held-out 10 s là 5,50 và 4,91 (mục 6.14); ở ô 1111 của
+  ablation là 4,44 và 4,69 (mục 6.15).
 - **A4 với M = 5 đã đạt 0,448 s** nhờ cửa sổ ngắn 1 000 mẫu; A5 chính chỉ nhanh hơn nó ở 48/75 cặp. Lợi ích của A5
   chính là đạt thời gian đó mà vẫn giữ cửa sổ kiểm chứng 4 000 mẫu, đối xứng với luật dừng của SEM.
-- **C2 phụ thuộc địa hình.** Trên dev mọi cạnh đều được chứng nhận vì địa hình thoải so với trần 35°. Địa hình dốc
-  hơn được lợi ít hơn; quyết định hợp lệ thì không đổi.
+- **C2 phụ thuộc địa hình.** Trên dev và trong ablation, mọi cạnh đều được chứng nhận vì địa hình thoải so với trần
+  35°. Địa hình dốc hơn được lợi ít hơn; quyết định hợp lệ thì không đổi.
 - **Nghiệm mồi không phải là BIT\*.** Nó là A* trên lưới cộng `rpRefine`, được ghi nguồn riêng trong mọi bản ghi.
   Nhánh `…_noseed` cho thấy BIT* tự đạt cùng J cuối khi không có nó. Trên held-out 20 s, đường cuối chính là nghiệm
-  mồi ở 47/250 lượt, và BIT* cải thiện nghiệm mồi trung bình 0,048%; trên held-out 10 s là 39/250 lượt và 0,066%.
+  mồi ở 47/250 lượt, và BIT* cải thiện nghiệm mồi trung bình 0,048%; trên held-out 10 s là 39/250 lượt và 0,066%;
+  ở ô 1111 của ablation là 32/150 lượt.
 - **Góc gấp:** 5 trên 75 đường, so với 1 của A4 chính và 229 của SEM.
 - **Phần còn lại của Time:** `rpRefine` 31%, dựng potential 13%. Muốn nhanh hơn nữa với W = 4 000 cần cơ chế mới,
   nằm ngoài kế hoạch đã duyệt.
